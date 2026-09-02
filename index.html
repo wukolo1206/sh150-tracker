@@ -724,6 +724,14 @@
             renderStudentGrid();
         }
 
+        // 姓名遮罩（中間字轉為 ○ 保護學生隱私，A4列印自動維持全名）
+        function maskName(name) {
+            if (!name) return '';
+            if (name.length <= 1) return name;
+            if (name.length === 2) return name[0] + '○';
+            return name[0] + '○'.repeat(name.length - 2) + name[name.length - 1];
+        }
+
         function renderStudentGrid() {
             const grid = document.getElementById('studentGrid');
             grid.innerHTML = '';
@@ -751,7 +759,7 @@
 
                 card.innerHTML = `
                     <div class="student-seat">${String(student.seat).padStart(2, '0')} 號</div>
-                    <div class="student-name">${student.name}</div>
+                    <div class="student-name">${maskName(student.name)}</div>
                     <div class="student-badge">${badgeText}</div>
                 `;
                 grid.appendChild(card);
@@ -767,7 +775,7 @@
             const week = parseInt(document.getElementById('weekNum').value) || 1;
             const dates = getWeekDates(week);
             const daysName = ['', '星期一', '星期二', '星期三', '星期四', '星期五'];
-            document.getElementById('modalStudentTitle').innerText = `${String(seat).padStart(2, '0')} ${name} - ${daysName[currentDay]} (${dates[currentDay].str})`;
+            document.getElementById('modalStudentTitle').innerText = `${String(seat).padStart(2, '0')} ${maskName(name)} - ${daysName[currentDay]} (${dates[currentDay].str})`;
             
             const key = `${seat}_${currentDay}`;
             const data = records[key] || { run: '', jump: '' };
