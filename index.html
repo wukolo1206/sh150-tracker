@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>408 班 SH150「跑跳遊臺灣」每日運動登記與 A4 列印系統</title>
+    <style>
+        :root {
+            --primary: #1e40af;
+            --primary-light: #dbeafe;
+            --success: #059669;
+            --warning: #d97706;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-700: #374151;
+            --gray-900: #111827;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+        }
+
+        body {
+            background-color: #f8fafc;
+            color: var(--gray-900);
+            padding: 16px;
+        }
+
+        .no-print {
+            max-width: 1200px;
+            margin: 0 auto 20px auto;
+        }
+
+        .header-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 16px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header-title h1 {
+            font-size: 1.5rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-title p {
+            color: var(--gray-700);
+            font-size: 0.9rem;
+            margin-top: 4px;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 10px 18px;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #1d4ed8;
+        }
+
+        .btn-success {
+            background-color: var(--success);
+            color: white;
+        }
+
+        .btn-outline {
+            background-color: white;
+            border: 2px solid var(--gray-200);
+            color: var(--gray-700);
+        }
+
+        .btn-outline:hover {
+            background-color: var(--gray-100);
+        }
+
+        /* Day selector */
+        .day-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+
+        .day-tab {
+            padding: 12px 20px;
+            border-radius: 10px;
+            background: white;
+            border: 2px solid var(--gray-200);
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            flex: 1;
+            text-align: center;
+            min-width: 100px;
+            transition: all 0.2s;
+        }
+
+        .day-tab.active {
+            background-color: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 4px 6px -1px rgba(30, 64, 175, 0.3);
+        }
+
+        /* Student Grid */
+        .student-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .student-card {
+            background: white;
+            border: 2px solid var(--gray-200);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            position: relative;
+            user-select: none;
+        }
+
+        .student-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--primary);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .student-card.has-data {
+            background-color: #ecfdf5;
+            border-color: #a7f3d0;
+        }
+
+        .student-seat {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: var(--gray-700);
+        }
+
+        .student-name {
+            font-size: 1.15rem;
+            font-weight: bold;
+            margin: 4px 0;
+            color: var(--gray-900);
+        }
+
+        .student-badge {
+            font-size: 0.8rem;
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 2px;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 480px;
+            width: 100%;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+            animation: popIn 0.2s ease-out;
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--gray-200);
+            padding-bottom: 12px;
+        }
+
+        .modal-header h2 {
+            font-size: 1.3rem;
+            color: var(--primary);
+        }
+
+        .quick-btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+            margin-bottom: 16px;
+        }
+
+        .quick-btn {
+            background: var(--gray-100);
+            border: 1px solid var(--gray-200);
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .quick-btn:hover {
+            background: var(--primary-light);
+            border-color: var(--primary);
+        }
+
+        .input-group {
+            margin-bottom: 16px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--gray-700);
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.2rem;
+            border: 2px solid var(--gray-200);
+            border-radius: 8px;
+            outline: none;
+        }
+
+        .input-group input:focus {
+            border-color: var(--primary);
+        }
+
+        /* Print Container */
+        .print-container {
+            display: none;
+            background: white;
+        }
+
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 8mm 10mm 8mm 10mm;
+            }
+
+            body {
+                background: white;
+                padding: 0;
+                margin: 0;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .print-container {
+                display: block !important;
+                width: 93% !important;
+                max-width: 180mm !important;
+                margin: 4mm auto 0 auto !important;
+                padding: 4mm 4px 0 4px !important;
+                box-sizing: border-box !important;
+            }
+
+            .print-title {
+                text-align: center;
+                font-size: 13.5pt;
+                font-weight: bold;
+                margin-top: 4px;
+                margin-bottom: 6px;
+                letter-spacing: 0.5px;
+                color: #000;
+            }
+
+            .print-sub {
+                display: flex;
+                justify-content: space-between;
+                font-size: 9.5pt;
+                font-weight: bold;
+                margin-bottom: 5px;
+                padding: 0 2px;
+                color: #000;
+            }
+
+            .print-table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                text-align: center;
+                font-size: 8.2pt;
+                table-layout: fixed;
+                border: 1.5px solid #000 !important;
+            }
+
+            .print-table th, .print-table td {
+                border: 1px solid #000 !important;
+                padding: 1.2px 1px !important;
+                height: 14.5px !important;
+                box-sizing: border-box;
+                color: #000;
+            }
+
+            .print-table th {
+                background-color: #f0f0f0 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                font-weight: bold;
+            }
+
+            .th-sub {
+                font-size: 7.5pt;
+            }
+
+            .print-footer-row {
+                font-weight: bold;
+                font-size: 7.8pt;
+            }
+
+            .print-bottom-sign {
+                display: flex;
+                justify-content: space-between;
+                margin-top: 8px;
+                font-size: 9.5pt;
+                font-weight: bold;
+                padding: 0 6px;
+                color: #000;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Non-print UI for Tablet & Touch Screen -->
+    <div class="no-print">
+        <div class="header-card">
+            <div class="header-title">
+                <h1>🏃 408 班 SH150 跑跳遊臺灣每日運動登記看板</h1>
+                <p>體育股長：18 陳依婕、12 李宸緯 ｜ 導師：吳國榮 老師 ｜ 支援學生平板自填與大螢幕觸控</p>
+            </div>
+            <div class="controls">
+                <button class="btn btn-outline" onclick="changeWeek(-1)" title="上一週">◀ 上一週</button>
+                <label style="font-weight:bold; font-size:1.05rem;">
+                    第 <input type="number" id="weekNum" value="1" min="1" max="25" style="width:50px; padding:4px; font-size:1.1rem; text-align:center; font-weight:bold;" onchange="onWeekChange()"> 週
+                </label>
+                <button class="btn btn-outline" onclick="changeWeek(1)" title="下一週">下一週 ▶</button>
+                <span id="headerDateRange" style="font-size:0.95rem; color:#1e40af; font-weight:bold; margin: 0 6px;">(8/31 ~ 9/4)</span>
+                <button class="btn btn-outline" onclick="exportData()">💾 備份</button>
+                <button class="btn btn-outline" onclick="importData()">📥 載入</button>
+                <button class="btn btn-outline" onclick="clearCurrentWeek()">🗑️ 清空本週</button>
+                <button class="btn btn-primary" onclick="window.print()">🖨️ A4 直接列印</button>
+            </div>
+        </div>
+
+        <!-- Day Tabs -->
+        <div class="day-tabs">
+            <div class="day-tab active" id="tab-day-1" onclick="switchDay(1)">星期一</div>
+            <div class="day-tab" id="tab-day-2" onclick="switchDay(2)">星期二</div>
+            <div class="day-tab" id="tab-day-3" onclick="switchDay(3)">星期三</div>
+            <div class="day-tab" id="tab-day-4" onclick="switchDay(4)">星期四</div>
+            <div class="day-tab" id="tab-day-5" onclick="switchDay(5)">星期五</div>
+        </div>
+
+        <!-- Student Touch Grid -->
+        <div class="student-grid" id="studentGrid">
+            <!-- Populated via JS -->
+        </div>
+
+        <!-- Teacher Section -->
+        <div class="header-card" style="margin-top: 10px;">
+            <div style="flex:1;">
+                <h3 style="color:var(--primary); margin-bottom:6px;">👨‍🏫 導師每日跑步圈數（加倍折算）</h3>
+                <div style="display:flex; gap:12px; align-items:center;">
+                    <label>當天導師跑步：</label>
+                    <input type="number" id="teacherRunInput" min="0" value="0" style="width:80px; padding:6px; font-size:1.1rem;" onchange="saveTeacherRun()">
+                    <span>圈（系統將自動乘 2 計入班級總圈數）</span>
+                </div>
+            </div>
+            <div style="background:#f0fdf4; padding:12px 20px; border-radius:8px; text-align:right;">
+                <div style="font-size:0.9rem; color:#166534;">當日全班已登記總圈數</div>
+                <div id="todayTotalSummary" style="font-size:1.8rem; font-weight:bold; color:#15803d;">0 圈</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Edit Modal -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2 id="modalStudentTitle">01 游濬謙 - 星期一</h2>
+                <button style="border:none; background:none; font-size:1.5rem; cursor:pointer;" onclick="closeModal()">✕</button>
+            </div>
+
+            <!-- Run section -->
+            <div class="input-group">
+                <label>🏃 跑步圈數 (圈)</label>
+                <div class="quick-btn-group">
+                    <button class="quick-btn" onclick="addRun(1)">+1 圈</button>
+                    <button class="quick-btn" onclick="addRun(2)">+2 圈</button>
+                    <button class="quick-btn" onclick="addRun(3)">+3 圈</button>
+                    <button class="quick-btn" onclick="addRun(5)">+5 圈</button>
+                    <button class="quick-btn" onclick="setRun(0)" style="color:#dc2626;">歸零</button>
+                </div>
+                <input type="number" id="inputRun" min="0" placeholder="0">
+            </div>
+
+            <!-- Jump section -->
+            <div class="input-group">
+                <label>🪢 跳繩下數 (下)</label>
+                <div class="quick-btn-group">
+                    <button class="quick-btn" onclick="addJump(50)">+50 下</button>
+                    <button class="quick-btn" onclick="addJump(100)">+100 下</button>
+                    <button class="quick-btn" onclick="addJump(200)">+200 下</button>
+                    <button class="quick-btn" onclick="addJump(500)">+500 下</button>
+                    <button class="quick-btn" onclick="setJump(0)" style="color:#dc2626;">歸零</button>
+                </div>
+                <input type="number" id="inputJump" min="0" placeholder="0">
+            </div>
+
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button class="btn btn-outline" style="flex:1;" onclick="closeModal()">取消</button>
+                <button class="btn btn-success" style="flex:2;" onclick="saveStudentRecord()">✅ 儲存登記</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Print Form Container (Exactly matches school layout for single A4 page) -->
+    <div class="print-container" id="printContainer">
+        <div class="print-title">115學年度三重區碧華國小 SH150「跑跳遊臺灣」班級每日運動圈數登記表</div>
+        <div class="print-sub">
+            <span>班級：4 年 8 班</span>
+            <span>體育股長：陳依婕、李宸緯</span>
+            <span id="printWeekSpan">第 &nbsp;&nbsp;&nbsp; 週（ &nbsp;&nbsp;&nbsp; 月 &nbsp;&nbsp;&nbsp; 日～ &nbsp;&nbsp;&nbsp; 月 &nbsp;&nbsp;&nbsp; 日）</span>
+        </div>
+
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th rowspan="2" style="width:5%;">座號</th>
+                    <th rowspan="2" style="width:11%;">姓名</th>
+                    <th colspan="2" style="width:16.8%;" id="print-th-1">星期一</th>
+                    <th colspan="2" style="width:16.8%;" id="print-th-2">星期二</th>
+                    <th colspan="2" style="width:16.8%;" id="print-th-3">星期三</th>
+                    <th colspan="2" style="width:16.8%;" id="print-th-4">星期四</th>
+                    <th colspan="2" style="width:16.8%;" id="print-th-5">星期五</th>
+                </tr>
+                <tr>
+                    <th class="th-sub">跑(圈)</th>
+                    <th class="th-sub">跳(下)</th>
+                    <th class="th-sub">跑(圈)</th>
+                    <th class="th-sub">跳(下)</th>
+                    <th class="th-sub">跑(圈)</th>
+                    <th class="th-sub">跳(下)</th>
+                    <th class="th-sub">跑(圈)</th>
+                    <th class="th-sub">跳(下)</th>
+                    <th class="th-sub">跑(圈)</th>
+                    <th class="th-sub">跳(下)</th>
+                </tr>
+            </thead>
+            <tbody id="printTableBody">
+                <!-- 35 rows generated by JS -->
+            </tbody>
+            <tfoot>
+                <tr class="print-footer-row">
+                    <td colspan="2">學生每日跑步合共 (圈)</td>
+                    <td id="p-sum-run-1">-</td><td>-</td>
+                    <td id="p-sum-run-2">-</td><td>-</td>
+                    <td id="p-sum-run-3">-</td><td>-</td>
+                    <td id="p-sum-run-4">-</td><td>-</td>
+                    <td id="p-sum-run-5">-</td><td>-</td>
+                </tr>
+                <tr class="print-footer-row">
+                    <td colspan="2">學生跳繩總下數 (折算圈)</td>
+                    <td colspan="2" id="p-sum-jump-1">0</td>
+                    <td colspan="2" id="p-sum-jump-2">0</td>
+                    <td colspan="2" id="p-sum-jump-3">0</td>
+                    <td colspan="2" id="p-sum-jump-4">0</td>
+                    <td colspan="2" id="p-sum-jump-5">0</td>
+                </tr>
+                <tr class="print-footer-row">
+                    <td colspan="2">導師每日跑步圈數 (加倍折算)</td>
+                    <td colspan="2" id="p-tea-1">-</td>
+                    <td colspan="2" id="p-tea-2">-</td>
+                    <td colspan="2" id="p-tea-3">-</td>
+                    <td colspan="2" id="p-tea-4">-</td>
+                    <td colspan="2" id="p-tea-5">-</td>
+                </tr>
+                <tr class="print-footer-row" style="background:#f9f9f9;">
+                    <td colspan="2">當日全班採計總圈數</td>
+                    <td colspan="2" id="p-tot-1" style="font-size:10pt;">0</td>
+                    <td colspan="2" id="p-tot-2" style="font-size:10pt;">0</td>
+                    <td colspan="2" id="p-tot-3" style="font-size:10pt;">0</td>
+                    <td colspan="2" id="p-tot-4" style="font-size:10pt;">0</td>
+                    <td colspan="2" id="p-tot-5" style="font-size:10pt;">0</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div class="print-bottom-sign">
+            <span id="printTotalGrand">總圈數(導師)： ________ 圈</span>
+            <span>體育組：_______________</span>
+            <span>學務主任：_______________</span>
+        </div>
+    </div>
+
+    <script>
+        // 408 Student Roster
+        const STUDENTS = [
+            { seat: 1, name: "游濬謙" },
+            { seat: 2, name: "李晨睿" },
+            { seat: 3, name: "王柏勛" },
+            { seat: 4, name: "劉宸燁" },
+            { seat: 5, name: "鄭又仁" },
+            { seat: 6, name: "簡宇辰" },
+            { seat: 7, name: "" }, // 缺號
+            { seat: 8, name: "楊晨熙" },
+            { seat: 9, name: "林宏哲" },
+            { seat: 10, name: "李亦修" },
+            { seat: 11, name: "汪昱辰" },
+            { seat: 12, name: "李宸緯" },
+            { seat: 13, name: "陳冠宇" },
+            { seat: 14, name: "李茗堃" },
+            { seat: 15, name: "林祐辰" },
+            { seat: 16, name: "蔡秉浩" },
+            { seat: 17, name: "蔡菲芸" },
+            { seat: 18, name: "陳依婕" },
+            { seat: 19, name: "陳依綺" },
+            { seat: 20, name: "柯祉妤" },
+            { seat: 21, name: "程旻薰" },
+            { seat: 22, name: "陳玥筑" },
+            { seat: 23, name: "王梓羽" },
+            { seat: 24, name: "黃庭蓁" },
+            { seat: 25, name: "李玉琳" },
+            { seat: 26, name: "黃樂芙" },
+            { seat: 27, name: "林忻" },
+            { seat: 28, name: "沈盈萱" },
+            { seat: 29, name: "游穠羽" },
+            { seat: 30, name: "沈芷心" },
+            { seat: 31, name: "吳苡熙" },
+            { seat: 32, name: "吳芊妤" },
+            { seat: 33, name: "" },
+            { seat: 34, name: "" },
+            { seat: 35, name: "" }
+        ];
+
+        // 115 學年度第 1 學期開學週一基準日：2026/08/31
+        const SEMESTER_START_MONDAY = new Date(2026, 7, 31);
+
+        let currentDay = 1; // 1: Mon ~ 5: Fri
+        let currentStudentSeat = null;
+        let records = {}; // Key: "seat_day" -> { run: 0, jump: 0 }
+        let teacherRuns = { 1:0, 2:0, 3:0, 4:0, 5:0 };
+
+        // 自動推算每週星期一至五的日期
+        function getWeekDates(weekNum) {
+            const w = parseInt(weekNum) || 1;
+            const mon = new Date(SEMESTER_START_MONDAY);
+            mon.setDate(SEMESTER_START_MONDAY.getDate() + (w - 1) * 7);
+
+            const dates = {};
+            for (let d = 1; d <= 5; d++) {
+                const cur = new Date(mon);
+                cur.setDate(mon.getDate() + (d - 1));
+                const m = cur.getMonth() + 1;
+                const date = cur.getDate();
+                dates[d] = {
+                    month: m,
+                    date: date,
+                    str: `${m}/${date}`,
+                    fullStr: `${m}月${date}日`
+                };
+            }
+            return dates;
+        }
+
+        // 偵測今天屬於開學第幾週
+        function detectCurrentWeek() {
+            const today = new Date();
+            if (today < SEMESTER_START_MONDAY) return 1;
+            const diffTime = today - SEMESTER_START_MONDAY;
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            const week = Math.floor(diffDays / 7) + 1;
+            return Math.max(1, Math.min(week, 22));
+        }
+
+        // 更新介面與列印表上的所有日期文字
+        function updateDateDisplays() {
+            const week = parseInt(document.getElementById('weekNum').value) || 1;
+            const dates = getWeekDates(week);
+            const daysZh = ['', '星期一', '星期二', '星期三', '星期四', '星期五'];
+
+            // 頂部日期區間
+            document.getElementById('headerDateRange').innerText = `(${dates[1].str} ~ ${dates[5].str})`;
+
+            // 平板/大屏分頁按鈕
+            for (let d = 1; d <= 5; d++) {
+                const tab = document.getElementById(`tab-day-${d}`);
+                if (tab) {
+                    tab.innerText = `${daysZh[d]} (${dates[d].str})`;
+                }
+            }
+
+            // 列印表頭週次與日期
+            document.getElementById('printWeekSpan').innerHTML = `第 &nbsp;<b>${week}</b>&nbsp; 週（ &nbsp;<b>${dates[1].month}</b>&nbsp; 月 &nbsp;<b>${dates[1].date}</b>&nbsp; 日 ～ &nbsp;<b>${dates[5].month}</b>&nbsp; 月 &nbsp;<b>${dates[5].date}</b>&nbsp; 日 ）`;
+
+            // 列印表格五天欄位標題
+            for (let d = 1; d <= 5; d++) {
+                const th = document.getElementById(`print-th-${d}`);
+                if (th) {
+                    th.innerText = `${daysZh[d]} (${dates[d].str})`;
+                }
+            }
+        }
+
+        function changeWeek(delta) {
+            const inp = document.getElementById('weekNum');
+            let val = (parseInt(inp.value) || 1) + delta;
+            if (val < 1) val = 1;
+            if (val > 25) val = 25;
+            inp.value = val;
+            onWeekChange();
+        }
+
+        function onWeekChange() {
+            updateDateDisplays();
+            updatePrintView();
+            saveData();
+        }
+
+        // Load data from LocalStorage
+        function loadData() {
+            const saved = localStorage.getItem('408_sh150_records');
+            let detected = detectCurrentWeek();
+            document.getElementById('weekNum').value = detected;
+
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    records = parsed.records || {};
+                    teacherRuns = parsed.teacherRuns || { 1:0, 2:0, 3:0, 4:0, 5:0 };
+                    if (parsed.week) document.getElementById('weekNum').value = parsed.week;
+                } catch(e) {}
+            }
+
+            // 預設切換至今天的星期 (1~5)
+            const todayDay = new Date().getDay(); // 0: Sun, 1: Mon ... 6: Sat
+            if (todayDay >= 1 && todayDay <= 5) {
+                currentDay = todayDay;
+            } else {
+                currentDay = 1;
+            }
+
+            updateDateDisplays();
+            switchDay(currentDay);
+            renderStudentGrid();
+            updatePrintView();
+        }
+
+        function saveData() {
+            const data = {
+                week: document.getElementById('weekNum').value,
+                records: records,
+                teacherRuns: teacherRuns
+            };
+            localStorage.setItem('408_sh150_records', JSON.stringify(data));
+            updatePrintView();
+        }
+
+        function switchDay(day) {
+            currentDay = day;
+            document.querySelectorAll('.day-tab').forEach((tab, idx) => {
+                tab.classList.toggle('active', (idx + 1) === day);
+            });
+            document.getElementById('teacherRunInput').value = teacherRuns[currentDay] || 0;
+            renderStudentGrid();
+        }
+
+        function renderStudentGrid() {
+            const grid = document.getElementById('studentGrid');
+            grid.innerHTML = '';
+
+            let dayTotal = 0;
+
+            STUDENTS.filter(s => s.name).forEach(student => {
+                const key = `${student.seat}_${currentDay}`;
+                const data = records[key] || { run: 0, jump: 0 };
+                const hasData = (data.run > 0 || data.jump > 0);
+
+                if (data.run > 0) dayTotal += Number(data.run);
+                if (data.jump > 0) dayTotal += Math.floor(Number(data.jump) / 200);
+
+                const card = document.createElement('div');
+                card.className = `student-card ${hasData ? 'has-data' : ''}`;
+                card.onclick = () => openModal(student.seat, student.name);
+
+                let badgeText = '';
+                if (hasData) {
+                    badgeText = `🏃${data.run || 0}圈 🪢${data.jump || 0}下`;
+                } else {
+                    badgeText = '點擊登記';
+                }
+
+                card.innerHTML = `
+                    <div class="student-seat">${String(student.seat).padStart(2, '0')} 號</div>
+                    <div class="student-name">${student.name}</div>
+                    <div class="student-badge">${badgeText}</div>
+                `;
+                grid.appendChild(card);
+            });
+
+            const teaRun = (teacherRuns[currentDay] || 0) * 2;
+            dayTotal += teaRun;
+            document.getElementById('todayTotalSummary').innerText = `${dayTotal} 圈`;
+        }
+
+        function openModal(seat, name) {
+            currentStudentSeat = seat;
+            const week = parseInt(document.getElementById('weekNum').value) || 1;
+            const dates = getWeekDates(week);
+            const daysName = ['', '星期一', '星期二', '星期三', '星期四', '星期五'];
+            document.getElementById('modalStudentTitle').innerText = `${String(seat).padStart(2, '0')} ${name} - ${daysName[currentDay]} (${dates[currentDay].str})`;
+            
+            const key = `${seat}_${currentDay}`;
+            const data = records[key] || { run: '', jump: '' };
+            document.getElementById('inputRun').value = data.run || '';
+            document.getElementById('inputJump').value = data.jump || '';
+
+            document.getElementById('modalOverlay').classList.add('active');
+            document.getElementById('inputRun').focus();
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('active');
+        }
+
+        function addRun(val) {
+            const inp = document.getElementById('inputRun');
+            inp.value = (Number(inp.value) || 0) + val;
+        }
+
+        function setRun(val) {
+            document.getElementById('inputRun').value = val === 0 ? '' : val;
+        }
+
+        function addJump(val) {
+            const inp = document.getElementById('inputJump');
+            inp.value = (Number(inp.value) || 0) + val;
+        }
+
+        function setJump(val) {
+            document.getElementById('inputJump').value = val === 0 ? '' : val;
+        }
+
+        function saveStudentRecord() {
+            if (!currentStudentSeat) return;
+            const key = `${currentStudentSeat}_${currentDay}`;
+            const runVal = Number(document.getElementById('inputRun').value) || 0;
+            const jumpVal = Number(document.getElementById('inputJump').value) || 0;
+
+            if (runVal === 0 && jumpVal === 0) {
+                delete records[key];
+            } else {
+                records[key] = { run: runVal, jump: jumpVal };
+            }
+
+            saveData();
+            renderStudentGrid();
+            closeModal();
+        }
+
+        function saveTeacherRun() {
+            teacherRuns[currentDay] = Number(document.getElementById('teacherRunInput').value) || 0;
+            saveData();
+            renderStudentGrid();
+        }
+
+        function updatePrintView() {
+            const tbody = document.getElementById('printTableBody');
+            tbody.innerHTML = '';
+
+            updateDateDisplays();
+
+            let dayRunSum = { 1:0, 2:0, 3:0, 4:0, 5:0 };
+            let dayJumpSum = { 1:0, 2:0, 3:0, 4:0, 5:0 };
+
+            for (let i = 1; i <= 35; i++) {
+                const s = STUDENTS[i - 1] || { seat: i, name: '' };
+                const tr = document.createElement('tr');
+
+                let tdHtml = `<td>${i}</td><td>${s.name}</td>`;
+                for (let d = 1; d <= 5; d++) {
+                    const key = `${i}_${d}`;
+                    const rec = records[key] || { run: '', jump: '' };
+                    const rVal = rec.run ? Number(rec.run) : '';
+                    const jVal = rec.jump ? Number(rec.jump) : '';
+
+                    if (rVal) dayRunSum[d] += rVal;
+                    if (jVal) dayJumpSum[d] += jVal;
+
+                    tdHtml += `<td>${rVal}</td><td>${jVal}</td>`;
+                }
+                tr.innerHTML = tdHtml;
+                tbody.appendChild(tr);
+            }
+
+            let grandTotal = 0;
+            for (let d = 1; d <= 5; d++) {
+                document.getElementById(`p-sum-run-${d}`).innerText = dayRunSum[d] || '';
+                const jumpConv = Math.floor(dayJumpSum[d] / 200);
+                document.getElementById(`p-sum-jump-${d}`).innerText = jumpConv > 0 ? jumpConv : (dayJumpSum[d] > 0 ? '0' : '');
+                
+                const tea = teacherRuns[d] || 0;
+                const teaDouble = tea * 2;
+                document.getElementById(`p-tea-${d}`).innerText = tea > 0 ? `${tea}*2=${teaDouble}` : '';
+
+                const dayTotal = dayRunSum[d] + jumpConv + teaDouble;
+                document.getElementById(`p-tot-${d}`).innerText = dayTotal > 0 ? dayTotal : '';
+                grandTotal += dayTotal;
+            }
+
+            document.getElementById('printTotalGrand').innerHTML = `總圈數(導師)： <b>${grandTotal}</b> 圈`;
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(localStorage.getItem('408_sh150_records') || '{}');
+            const dl = document.createElement('a');
+            dl.setAttribute("href", dataStr);
+            dl.setAttribute("download", `408_SH150_第${document.getElementById('weekNum').value}週.json`);
+            dl.click();
+        }
+
+        function importData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = e => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    localStorage.setItem('408_sh150_records', ev.target.result);
+                    loadData();
+                    alert('資料載入成功！');
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+
+        function clearCurrentWeek() {
+            if (confirm('確定要清空本週所有登記資料嗎？')) {
+                records = {};
+                teacherRuns = { 1:0, 2:0, 3:0, 4:0, 5:0 };
+                saveData();
+                renderStudentGrid();
+            }
+        }
+
+        // Init
+        window.onload = loadData;
+    </script>
+</body>
+</html>
