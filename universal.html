@@ -758,6 +758,14 @@
                 try {
                     const parsed = JSON.parse(savedConfig);
                     classConfig = { ...DEFAULT_CONFIG, ...parsed };
+                    if (!classConfig.studentCount || parseInt(classConfig.studentCount) < 10) {
+                        classConfig.studentCount = 35;
+                    }
+                    if (Array.isArray(classConfig.studentNames)) {
+                        classConfig.studentNames = classConfig.studentNames.filter(n => n && n.trim());
+                    } else {
+                        classConfig.studentNames = [];
+                    }
                 } catch(e) {
                     classConfig = { ...DEFAULT_CONFIG };
                 }
@@ -816,8 +824,8 @@
             grid.innerHTML = '';
 
             let dayTotal = 0;
-            const count = parseInt(classConfig.studentCount) || 35;
-            const namesList = classConfig.studentNames || [];
+            const namesList = Array.isArray(classConfig.studentNames) ? classConfig.studentNames : [];
+            const count = Math.max(35, parseInt(classConfig.studentCount) || 35, namesList.length);
 
             for (let i = 1; i <= count; i++) {
                 const sName = (namesList[i - 1] && namesList[i - 1].trim()) ? namesList[i - 1].trim() : '';
