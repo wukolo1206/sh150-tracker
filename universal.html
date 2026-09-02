@@ -437,7 +437,7 @@
         <!-- Teacher Running Section -->
         <div class="teacher-section">
             <div class="teacher-info">
-                <span>🏃 導師跑步圈數登記（全班總圈數 $\times 2$ 倍加成）：</span>
+                <span>🏃 導師跑步圈數登記（全班總圈數 × 2 倍加成）：</span>
             </div>
             <div style="display:flex; align-items:center; gap:8px;">
                 <input type="number" id="teacherRunInput" min="0" max="50" placeholder="0" style="width:70px; padding:6px; font-size:1.1rem; text-align:center; border:1px solid #cbd5e1; border-radius:6px;" onchange="saveTeacherRun()">
@@ -505,6 +505,10 @@
                 <div class="form-group" style="flex:1;">
                     <label>導師姓名：</label>
                     <input type="text" id="cfgTeacherName" class="form-input" placeholder="例如：OOO 老師">
+                </div>
+                <div class="form-group" style="width:110px;">
+                    <label>全班人數：</label>
+                    <input type="number" id="cfgStudentCount" class="form-input" min="10" max="45" value="35" style="text-align:center;">
                 </div>
             </div>
 
@@ -701,19 +705,23 @@
             const dates = getWeekDates(week);
             const daysZh = ['', '星期一', '星期二', '星期三', '星期四', '星期五'];
 
+            const cName = classConfig.className || '4XX';
+            const tName = classConfig.teacherName || 'OOO 老師';
+            const lName = classConfig.leaderName || 'OOO、OOO';
+
             // UI Header
             document.getElementById('headerDateRange').innerText = `(${dates[1].str} ~ ${dates[5].str})`;
-            document.getElementById('uiClassName').innerText = classConfig.className;
-            document.getElementById('uiTeacherName').innerText = classConfig.teacherName;
+            document.getElementById('uiClassName').innerText = cName;
+            document.getElementById('uiTeacherName').innerText = tName;
             
             // Mask leader names on screen
-            const maskedLeaders = classConfig.leaderName.split(/[,、\s]+/).map(maskName).join('、');
-            document.getElementById('uiLeaderName').innerText = maskedLeaders || '--';
+            const maskedLeaders = lName.split(/[,、\s]+/).filter(Boolean).map(maskName).join('、');
+            document.getElementById('uiLeaderName').innerText = maskedLeaders || lName;
 
             // Print info
-            document.getElementById('p-className').innerText = classConfig.className;
-            document.getElementById('p-leaderName').innerText = classConfig.leaderName;
-            document.getElementById('p-teacherName').innerText = classConfig.teacherName;
+            document.getElementById('p-className').innerText = cName;
+            document.getElementById('p-leaderName').innerText = lName;
+            document.getElementById('p-teacherName').innerText = tName;
             document.getElementById('p-week').innerText = week;
             document.getElementById('p-date-range').innerText = `${dates[1].str} ~ ${dates[5].str}`;
 
@@ -748,8 +756,13 @@
             const savedConfig = localStorage.getItem('sh150_class_config');
             if (savedConfig) {
                 try {
-                    classConfig = JSON.parse(savedConfig);
-                } catch(e) {}
+                    const parsed = JSON.parse(savedConfig);
+                    classConfig = { ...DEFAULT_CONFIG, ...parsed };
+                } catch(e) {
+                    classConfig = { ...DEFAULT_CONFIG };
+                }
+            } else {
+                classConfig = { ...DEFAULT_CONFIG };
             }
 
             const savedRecords = localStorage.getItem(`sh150_records_${classConfig.className || 'default'}`);
@@ -803,12 +816,11 @@
             grid.innerHTML = '';
 
             let dayTotal = 0;
+            const count = parseInt(classConfig.studentCount) || 35;
             const namesList = classConfig.studentNames || [];
-            const totalCount = Math.max(30, namesList.length);
 
-            for (let i = 1; i <= totalCount; i++) {
-                const sName = namesList[i - 1] || '';
-                if (!sName && i > namesList.length && namesList.length > 0) continue;
+            for (let i = 1; i <= count; i++) {
+                const sName = (namesList[i - 1] && namesList[i - 1].trim()) ? namesList[i - 1].trim() : '';
 
                 const key = `${i}_${currentDay}`;
                 const data = records[key] || { run: 0, jump: 0 };
@@ -848,8 +860,8 @@
             const week = parseInt(document.getElementById('weekNum').value) || 1;
             const dates = getWeekDates(week);
             const daysName = ['', '星期一', '星期二', '星期三', '星期四', '星期五'];
-            const displayName = name ? maskName(name) : '';
-            document.getElementById('modalStudentTitle').innerText = `${String(seat).padStart(2, '0')} ${displayName} - ${daysName[currentDay]} (${dates[currentDay].str})`;
+            const displayName = name ? `${String(seat).padStart(2, '0')} ${maskName(name)}` : `${String(seat).padStart(2, '0')} 號`;
+            document.getElementById('modalStudentTitle').innerText = `${displayName} - ${daysName[currentDay]} (${dates[currentDay].str})`;
             
             const key = `${seat}_${currentDay}`;
             const data = records[key] || { run: '', jump: '' };
@@ -964,10 +976,11 @@
 
         /* ── Settings Modal Functions ── */
         function openSettingsModal() {
-            document.getElementById('cfgClassName').value = classConfig.className || '';
-            document.getElementById('cfgTeacherName').value = classConfig.teacherName || '';
-            document.getElementById('cfgLeaderName').value = classConfig.leaderName || '';
-            document.getElementById('cfgStudentNames').value = (classConfig.studentNames || []).join('\n');
+            document.getElementById('cfgClassName').value = classConfig.className || '4XX';
+            document.getElementById('cfgTeacherName').value = classConfig.teacherName || 'OOO 老師';
+            document.getElementById('cfgLeaderName').value = classConfig.leaderName || 'OOO、OOO';
+            document.getElementById('cfgStudentCount').value = classConfig.studentCount || 35;
+            document.getElementById('cfgStudentNames').value = (classConfig.studentNames || []).filter(Boolean).join('\n');
             document.getElementById('settingsModalOverlay').classList.add('active');
         }
 
@@ -977,11 +990,12 @@
 
         function saveSettings() {
             const rawNames = document.getElementById('cfgStudentNames').value;
-            const namesArray = rawNames.split('\n').map(n => n.trim());
+            const namesArray = rawNames.split('\n').map(n => n.trim()).filter(Boolean);
 
-            classConfig.className = document.getElementById('cfgClassName').value.trim() || '班級';
-            classConfig.teacherName = document.getElementById('cfgTeacherName').value.trim() || '';
-            classConfig.leaderName = document.getElementById('cfgLeaderName').value.trim() || '';
+            classConfig.className = document.getElementById('cfgClassName').value.trim() || '4XX';
+            classConfig.teacherName = document.getElementById('cfgTeacherName').value.trim() || 'OOO 老師';
+            classConfig.leaderName = document.getElementById('cfgLeaderName').value.trim() || 'OOO、OOO';
+            classConfig.studentCount = parseInt(document.getElementById('cfgStudentCount').value) || 35;
             classConfig.studentNames = namesArray;
 
             localStorage.setItem('sh150_class_config', JSON.stringify(classConfig));
@@ -997,6 +1011,7 @@
                 document.getElementById('cfgClassName').value = DEFAULT_CONFIG.className;
                 document.getElementById('cfgTeacherName').value = DEFAULT_CONFIG.teacherName;
                 document.getElementById('cfgLeaderName').value = DEFAULT_CONFIG.leaderName;
+                document.getElementById('cfgStudentCount').value = 35;
                 document.getElementById('cfgStudentNames').value = '';
             }
         }
