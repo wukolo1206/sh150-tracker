@@ -404,8 +404,8 @@
     <div class="no-print">
         <div class="header-card">
             <div class="header-title">
-                <h1 id="uiHeaderTitle">🏃 <span id="uiClassName">408</span> 班 SH150 跑跳遊臺灣每日運動登記看板</h1>
-                <p id="uiHeaderSub">體育股長：<span id="uiLeaderName">--</span> ｜ 導師：<span id="uiTeacherName">--</span> ｜ 支援學生平板自填與大螢幕觸控</p>
+                <h1 id="uiHeaderTitle">🏃 <span id="uiClassName">4XX</span> 班 SH150 跑跳遊臺灣每日運動登記看板</h1>
+                <p id="uiHeaderSub">體育股長：<span id="uiLeaderName">OOO、OOO</span> ｜ 導師：<span id="uiTeacherName">OOO 老師</span> ｜ 支援學生平板自填與大螢幕觸控</p>
             </div>
             <div class="controls">
                 <button class="btn btn-settings" onclick="openSettingsModal()" title="設定年級班級與名冊">⚙️ 班級設定 / 貼上名冊</button>
@@ -500,22 +500,22 @@
             <div style="display:flex; gap:10px; margin-bottom:12px;">
                 <div class="form-group" style="flex:1;">
                     <label>年級班級：</label>
-                    <input type="text" id="cfgClassName" class="form-input" placeholder="例如：408 或 四年8班">
+                    <input type="text" id="cfgClassName" class="form-input" placeholder="例如：401 或 四年1班">
                 </div>
                 <div class="form-group" style="flex:1;">
                     <label>導師姓名：</label>
-                    <input type="text" id="cfgTeacherName" class="form-input" placeholder="例如：吳國榮 老師">
+                    <input type="text" id="cfgTeacherName" class="form-input" placeholder="例如：OOO 老師">
                 </div>
             </div>
 
             <div class="form-group">
                 <label>體育股長姓名：</label>
-                <input type="text" id="cfgLeaderName" class="form-input" placeholder="例如：陳依婕、李宸緯">
+                <input type="text" id="cfgLeaderName" class="form-input" placeholder="例如：OOO、OOO">
             </div>
 
             <div class="form-group">
                 <label>全班學生姓名名冊（直接從 Excel / 校務行政系統複製，一行一位）：</label>
-                <textarea id="cfgStudentNames" class="form-textarea" placeholder="游濬謙&#10;李晨睿&#10;王柏勛&#10;劉宸燁&#10;鄭又仁&#10;..."></textarea>
+                <textarea id="cfgStudentNames" class="form-textarea" placeholder="王小明&#10;李小美&#10;張大同&#10;...（留空則為純座號 01~35 號模式）"></textarea>
                 <div style="font-size:0.85rem; color:#64748b; margin-top:4px;">
                     💡 提示：若不輸入姓名，將自動轉為「純座號模式（01號～35號）」。
                 </div>
@@ -523,7 +523,7 @@
 
             <div style="margin-top:16px; display:flex; flex-wrap:wrap; gap:8px; justify-content:space-between; align-items:center;">
                 <div>
-                    <button class="btn btn-outline" onclick="loadDefault408Config()">恢復 408 預設</button>
+                    <button class="btn btn-outline" onclick="loadDefaultEmptyConfig()">恢復純座號預設</button>
                 </div>
                 <div style="display:flex; gap:8px;">
                     <button class="btn btn-outline" onclick="closeSettingsModal()">取消</button>
@@ -540,10 +540,10 @@
     <div class="print-view">
         <div class="print-title">新北市三重區碧華國小 115 學年度第 1 學期班級每日運動圈數登記表</div>
         <div class="print-sub-info">
-            <span>年級班級：<b id="p-className">408</b> 班</span>
-            <span>體育股長：<b id="p-leaderName">陳依婕、李宸緯</b></span>
+            <span>年級班級：<b id="p-className">4XX</b> 班</span>
+            <span>體育股長：<b id="p-leaderName">OOO、OOO</b></span>
             <span>第 <b id="p-week">1</b> 週 (<span id="p-date-range">8/31~9/4</span>)</span>
-            <span>導師簽名：<b id="p-teacherName">吳國榮 老師</b></span>
+            <span>導師簽名：<b id="p-teacherName">OOO 老師</b></span>
         </div>
 
         <table class="print-table">
@@ -638,20 +638,12 @@
     </div>
 
     <script>
-        // 預設 408 班範本
+        // 全校通用版預設範本（純座號 01~35 號、4XX班、OOO老師）
         const DEFAULT_CONFIG = {
-            className: "408",
-            teacherName: "吳國榮 老師",
-            leaderName: "陳依婕、李宸緯",
-            studentNames: [
-                "游濬謙", "李晨睿", "王柏勛", "劉宸燁", "鄭又仁",
-                "簡宇辰", "", "楊晨熙", "林宏哲", "李亦修",
-                "汪昱辰", "李宸緯", "陳冠宇", "李茗堃", "林祐辰",
-                "蔡秉浩", "蔡菲芸", "陳依婕", "陳依錡", "柯祉妤",
-                "程旻薰", "陳玥筑", "王梓羽", "黃庭蓁", "李玉琳",
-                "黃樂芙", "林忻", "沈盈萱", "游禧羽", "沈芷心",
-                "吳玟熙", "吳芊妤"
-            ]
+            className: "4XX",
+            teacherName: "OOO 老師",
+            leaderName: "OOO、OOO",
+            studentNames: [] // 預設空陣列即為 01~35 號純座號模式
         };
 
         // 115 學年度第 1 學期開學週一基準日：2026/08/31
@@ -1000,12 +992,12 @@
             alert('✅ 班級設定已成功儲存並套用！');
         }
 
-        function loadDefault408Config() {
-            if (confirm('確定要載入 408 班的預設名冊與設定嗎？')) {
+        function loadDefaultEmptyConfig() {
+            if (confirm('確定要恢復為 4XX 班、純座號 01~35 號預設嗎？')) {
                 document.getElementById('cfgClassName').value = DEFAULT_CONFIG.className;
                 document.getElementById('cfgTeacherName').value = DEFAULT_CONFIG.teacherName;
                 document.getElementById('cfgLeaderName').value = DEFAULT_CONFIG.leaderName;
-                document.getElementById('cfgStudentNames').value = DEFAULT_CONFIG.studentNames.join('\n');
+                document.getElementById('cfgStudentNames').value = '';
             }
         }
 
