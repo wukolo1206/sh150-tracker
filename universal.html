@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SH150 跑跳遊臺灣每日運動登記系統 (全校各班通用版)</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-page: #f8fafc;
+            --card-bg: #ffffff;
+            --border-color: #cbd5e1;
+            --text-dark: #1e293b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-dark);
+            padding: 12px;
+        }
+
+        /* ── Non-print UI ── */
+        .no-print {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header-card {
+            background: white;
+            border-radius: 16px;
+            padding: 16px 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+            margin-bottom: 16px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-title h1 {
+            font-size: 1.5rem;
+            color: #1e3a8a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-title p {
+            font-size: 0.95rem;
+            color: #475569;
+            margin-top: 4px;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-outline {
+            background: white;
+            border-color: #94a3b8;
+            color: #334155;
+        }
+        .btn-outline:hover {
+            background: #f1f5f9;
+        }
+
+        .btn-settings {
+            background: #fef3c7;
+            border-color: #f59e0b;
+            color: #92400e;
+        }
+        .btn-settings:hover {
+            background: #fde68a;
+        }
+
+        /* Day Tabs */
+        .day-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            background: #e2e8f0;
+            padding: 6px;
+            border-radius: 12px;
+            overflow-x: auto;
+        }
+
+        .day-tab {
+            flex: 1;
+            min-width: 90px;
+            text-align: center;
+            padding: 10px 8px;
+            font-size: 1.05rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            background: transparent;
+            color: #475569;
+            transition: all 0.2s;
+        }
+
+        .day-tab.active {
+            background: white;
+            color: var(--primary);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        /* Student Grid */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .student-card {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 10px 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.1s, border-color 0.2s, box-shadow 0.2s;
+            user-select: none;
+        }
+
+        .student-card:active {
+            transform: scale(0.96);
+        }
+
+        .student-card.has-data {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .student-seat {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #64748b;
+        }
+
+        .student-name {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #1e293b;
+            margin: 3px 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .student-badge {
+            font-size: 0.82rem;
+            font-weight: bold;
+            padding: 3px 6px;
+            border-radius: 6px;
+            background: #f1f5f9;
+            color: #475569;
+            display: inline-block;
+        }
+
+        .student-card.has-data .student-badge {
+            background: #2563eb;
+            color: white;
+        }
+
+        /* Teacher section */
+        .teacher-section {
+            background: white;
+            border-radius: 12px;
+            padding: 14px 18px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .teacher-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.05rem;
+            font-weight: bold;
+            color: #1e3a8a;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            padding: 16px;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: white;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 480px;
+            padding: 22px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 10px;
+            margin-bottom: 16px;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #1e3a8a;
+        }
+
+        .quick-btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .quick-btn {
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            font-size: 0.95rem;
+            font-weight: bold;
+            cursor: pointer;
+            color: #1e293b;
+        }
+        .quick-btn:active {
+            background: #e2e8f0;
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 4px;
+            font-size: 0.95rem;
+            color: #334155;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            font-size: 1.05rem;
+        }
+
+        .form-textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            font-size: 0.95rem;
+            height: 120px;
+            font-family: monospace;
+            resize: vertical;
+        }
+
+        /* ── Print Styles (Strict A4 Portrait Layout) ── */
+        .print-view {
+            display: none;
+        }
+
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 6mm 10mm 6mm 10mm;
+            }
+
+            body {
+                background: white !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                color: black !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .print-view {
+                display: block !important;
+                width: 93% !important;
+                max-width: 180mm !important;
+                margin: 4mm auto !important;
+                font-family: "標楷體", "DFKai-SB", "BiauKai", serif !important;
+            }
+
+            .print-title {
+                text-align: center;
+                font-size: 13.5pt;
+                font-weight: bold;
+                letter-spacing: 0.5px;
+                margin-top: 2mm;
+                margin-bottom: 1.5mm;
+                line-height: 1.2;
+            }
+
+            .print-sub-info {
+                display: flex;
+                justify-content: space-between;
+                font-size: 9pt;
+                font-weight: bold;
+                margin-bottom: 1.5mm;
+            }
+
+            .print-table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                table-layout: fixed !important;
+                font-size: 7.6pt !important;
+                border: 1.5px solid #000 !important;
+                box-sizing: border-box !important;
+            }
+
+            .print-table th, .print-table td {
+                border: 1px solid #000 !important;
+                text-align: center;
+                vertical-align: middle;
+                padding: 1.1px 0px !important;
+                height: 5.6mm !important;
+                box-sizing: border-box;
+            }
+
+            .print-table th {
+                background-color: #f2f2f2 !important;
+                font-weight: bold;
+            }
+
+            .print-footer {
+                margin-top: 1.5mm;
+                font-size: 8pt;
+                line-height: 1.25;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Non-print UI for Tablet & Touch Screen -->
+    <div class="no-print">
+        <div class="header-card">
+            <div class="header-title">
+                <h1 id="uiHeaderTitle">🏃 <span id="uiClassName">408</span> 班 SH150 跑跳遊臺灣每日運動登記看板</h1>
+                <p id="uiHeaderSub">體育股長：<span id="uiLeaderName">--</span> ｜ 導師：<span id="uiTeacherName">--</span> ｜ 支援學生平板自填與大螢幕觸控</p>
+            </div>
+            <div class="controls">
+                <button class="btn btn-settings" onclick="openSettingsModal()" title="設定年級班級與名冊">⚙️ 班級設定 / 貼上名冊</button>
+                <button class="btn btn-outline" onclick="changeWeek(-1)" title="上一週">◀ 上一週</button>
+                <label style="font-weight:bold; font-size:1.05rem;">
+                    第 <input type="number" id="weekNum" value="1" min="1" max="25" style="width:50px; padding:4px; font-size:1.1rem; text-align:center; font-weight:bold;" onchange="onWeekChange()"> 週
+                </label>
+                <button class="btn btn-outline" onclick="changeWeek(1)" title="下一週">下一週 ▶</button>
+                <span id="headerDateRange" style="font-size:0.95rem; color:#1e40af; font-weight:bold; margin: 0 4px;">(8/31 ~ 9/4)</span>
+                <button class="btn btn-outline" onclick="exportData()">💾 備份</button>
+                <button class="btn btn-outline" onclick="importData()">📥 載入</button>
+                <button class="btn btn-outline" onclick="clearCurrentWeek()">🗑️ 清空本週</button>
+                <button class="btn btn-primary" onclick="window.print()">🖨️ A4 直接列印</button>
+            </div>
+        </div>
+
+        <!-- Day Tabs -->
+        <div class="day-tabs">
+            <div class="day-tab active" id="tab-day-1" onclick="switchDay(1)">星期一</div>
+            <div class="day-tab" id="tab-day-2" onclick="switchDay(2)">星期二</div>
+            <div class="day-tab" id="tab-day-3" onclick="switchDay(3)">星期三</div>
+            <div class="day-tab" id="tab-day-4" onclick="switchDay(4)">星期四</div>
+            <div class="day-tab" id="tab-day-5" onclick="switchDay(5)">星期五</div>
+        </div>
+
+        <!-- Student Cards Grid -->
+        <div class="grid-container" id="studentGrid"></div>
+
+        <!-- Teacher Running Section -->
+        <div class="teacher-section">
+            <div class="teacher-info">
+                <span>🏃 導師跑步圈數登記（全班總圈數 $\times 2$ 倍加成）：</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <input type="number" id="teacherRunInput" min="0" max="50" placeholder="0" style="width:70px; padding:6px; font-size:1.1rem; text-align:center; border:1px solid #cbd5e1; border-radius:6px;" onchange="saveTeacherRun()">
+                <span style="font-weight:bold;">圈</span>
+                <button class="btn btn-outline" onclick="addTeacherRun(1)">+1圈</button>
+                <button class="btn btn-outline" onclick="addTeacherRun(2)">+2圈</button>
+                <button class="btn btn-outline" onclick="addTeacherRun(5)">+5圈</button>
+            </div>
+            <div style="font-weight:bold; color:#1e3a8a;">
+                今日全班預估總圈數：<span id="todayTotalSummary" style="font-size:1.3rem; color:#dc2626;">0 圈</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Record Input Modal -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title" id="modalStudentTitle">座號 姓名 - 星期幾</div>
+                <button style="border:none; background:none; font-size:1.5rem; cursor:pointer;" onclick="closeModal()">✕</button>
+            </div>
+
+            <div class="form-group">
+                <label>🏃 操場跑步（圈數）：</label>
+                <input type="number" id="inputRun" class="form-input" min="0" max="50" placeholder="請輸入跑步圈數 (例如 2)">
+                <div class="quick-btn-group">
+                    <button class="quick-btn" onclick="addRun(1)">+1 圈</button>
+                    <button class="quick-btn" onclick="addRun(2)">+2 圈</button>
+                    <button class="quick-btn" onclick="addRun(5)">+5 圈</button>
+                    <button class="quick-btn" onclick="setRun(0)">歸零</button>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top:16px;">
+                <label>🪢 跳繩下數（每 200 下自動折算 1 圈操場）：</label>
+                <input type="number" id="inputJump" class="form-input" min="0" step="50" placeholder="請輸入跳繩下數 (例如 400)">
+                <div class="quick-btn-group">
+                    <button class="quick-btn" onclick="addJump(100)">+100 下</button>
+                    <button class="quick-btn" onclick="addJump(200)">+200 下 (抵1圈)</button>
+                    <button class="quick-btn" onclick="addJump(500)">+500 下</button>
+                    <button class="quick-btn" onclick="setJump(0)">歸零</button>
+                </div>
+            </div>
+
+            <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
+                <button class="btn btn-outline" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary" style="padding:8px 20px;" onclick="saveStudentRecord()">確定儲存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal (Universal Configuration) -->
+    <div class="modal-overlay" id="settingsModalOverlay">
+        <div class="modal-card" style="max-width:560px;">
+            <div class="modal-header">
+                <div class="modal-title">⚙️ 班級基本資訊與名冊設定</div>
+                <button style="border:none; background:none; font-size:1.5rem; cursor:pointer;" onclick="closeSettingsModal()">✕</button>
+            </div>
+
+            <div style="display:flex; gap:10px; margin-bottom:12px;">
+                <div class="form-group" style="flex:1;">
+                    <label>年級班級：</label>
+                    <input type="text" id="cfgClassName" class="form-input" placeholder="例如：408 或 四年8班">
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>導師姓名：</label>
+                    <input type="text" id="cfgTeacherName" class="form-input" placeholder="例如：吳國榮 老師">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>體育股長姓名：</label>
+                <input type="text" id="cfgLeaderName" class="form-input" placeholder="例如：陳依婕、李宸緯">
+            </div>
+
+            <div class="form-group">
+                <label>全班學生姓名名冊（直接從 Excel / 校務行政系統複製，一行一位）：</label>
+                <textarea id="cfgStudentNames" class="form-textarea" placeholder="游濬謙&#10;李晨睿&#10;王柏勛&#10;劉宸燁&#10;鄭又仁&#10;..."></textarea>
+                <div style="font-size:0.85rem; color:#64748b; margin-top:4px;">
+                    💡 提示：若不輸入姓名，將自動轉為「純座號模式（01號～35號）」。
+                </div>
+            </div>
+
+            <div style="margin-top:16px; display:flex; flex-wrap:wrap; gap:8px; justify-content:space-between; align-items:center;">
+                <div>
+                    <button class="btn btn-outline" onclick="loadDefault408Config()">恢復 408 預設</button>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn btn-outline" onclick="closeSettingsModal()">取消</button>
+                    <button class="btn btn-primary" onclick="saveSettings()">儲存並套用</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden file input for import -->
+    <input type="file" id="importFileInput" style="display:none" accept=".json" onchange="handleFileImport(event)">
+
+    <!-- ── Print View (Only visible on paper) ── -->
+    <div class="print-view">
+        <div class="print-title">新北市三重區碧華國小 115 學年度第 1 學期班級每日運動圈數登記表</div>
+        <div class="print-sub-info">
+            <span>年級班級：<b id="p-className">408</b> 班</span>
+            <span>體育股長：<b id="p-leaderName">陳依婕、李宸緯</b></span>
+            <span>第 <b id="p-week">1</b> 週 (<span id="p-date-range">8/31~9/4</span>)</span>
+            <span>導師簽名：<b id="p-teacherName">吳國榮 老師</b></span>
+        </div>
+
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th rowspan="2" style="width: 20px;">座<br>號</th>
+                    <th rowspan="2" style="width: 50px;">姓 名</th>
+                    <th colspan="2" id="p-th-1">星期一 (8/31)</th>
+                    <th colspan="2" id="p-th-2">星期二 (9/1)</th>
+                    <th colspan="2" id="p-th-3">星期三 (9/2)</th>
+                    <th colspan="2" id="p-th-4">星期四 (9/3)</th>
+                    <th colspan="2" id="p-th-5">星期五 (9/4)</th>
+                </tr>
+                <tr>
+                    <th style="width: 25px;">跑步<br>圈數</th>
+                    <th style="width: 28px;">跳繩<br>下數</th>
+                    <th style="width: 25px;">跑步<br>圈數</th>
+                    <th style="width: 28px;">跳繩<br>下數</th>
+                    <th style="width: 25px;">跑步<br>圈數</th>
+                    <th style="width: 28px;">跳繩<br>下數</th>
+                    <th style="width: 25px;">跑步<br>圈數</th>
+                    <th style="width: 28px;">跳繩<br>下數</th>
+                    <th style="width: 25px;">跑步<br>圈數</th>
+                    <th style="width: 28px;">跳繩<br>下數</th>
+                </tr>
+            </thead>
+            <tbody id="printTableBody"></tbody>
+            <tfoot>
+                <tr style="font-weight:bold; background-color:#f9f9f9;">
+                    <td colspan="2">學生跑步圈數</td>
+                    <td id="p-sum-run-1">0</td>
+                    <td>-</td>
+                    <td id="p-sum-run-2">0</td>
+                    <td>-</td>
+                    <td id="p-sum-run-3">0</td>
+                    <td>-</td>
+                    <td id="p-sum-run-4">0</td>
+                    <td>-</td>
+                    <td id="p-sum-run-5">0</td>
+                    <td>-</td>
+                </tr>
+                <tr style="font-weight:bold; background-color:#f9f9f9;">
+                    <td colspan="2">跳繩折抵圈數<br><span style="font-size:6.5pt; font-weight:normal;">(200下=1圈)</span></td>
+                    <td>-</td>
+                    <td id="p-sum-jump-1">0</td>
+                    <td>-</td>
+                    <td id="p-sum-jump-2">0</td>
+                    <td>-</td>
+                    <td id="p-sum-jump-3">0</td>
+                    <td>-</td>
+                    <td id="p-sum-jump-4">0</td>
+                    <td>-</td>
+                    <td id="p-sum-jump-5">0</td>
+                </tr>
+                <tr style="font-weight:bold; background-color:#f9f9f9;">
+                    <td colspan="2">學生每日總圈數</td>
+                    <td colspan="2" id="p-stu-total-1">0</td>
+                    <td colspan="2" id="p-stu-total-2">0</td>
+                    <td colspan="2" id="p-stu-total-3">0</td>
+                    <td colspan="2" id="p-stu-total-4">0</td>
+                    <td colspan="2" id="p-stu-total-5">0</td>
+                </tr>
+                <tr style="font-weight:bold; background-color:#f9f9f9;">
+                    <td colspan="2">導師跑步圈數</td>
+                    <td colspan="2" id="p-tea-run-1">0</td>
+                    <td colspan="2" id="p-tea-run-2">0</td>
+                    <td colspan="2" id="p-tea-run-3">0</td>
+                    <td colspan="2" id="p-tea-run-4">0</td>
+                    <td colspan="2" id="p-tea-run-5">0</td>
+                </tr>
+                <tr style="font-weight:bold; background-color:#e6f2ff;">
+                    <td colspan="2">全班每日總圈數<br><span style="font-size:6.5pt; font-weight:normal;">(導師圈數$\times 2$加計)</span></td>
+                    <td colspan="2" id="p-day-grand-1" style="font-size:8.5pt;">0</td>
+                    <td colspan="2" id="p-day-grand-2" style="font-size:8.5pt;">0</td>
+                    <td colspan="2" id="p-day-grand-3" style="font-size:8.5pt;">0</td>
+                    <td colspan="2" id="p-day-grand-4" style="font-size:8.5pt;">0</td>
+                    <td colspan="2" id="p-day-grand-5" style="font-size:8.5pt;">0</td>
+                </tr>
+                <tr style="font-weight:bold; background-color:#dbeafe;">
+                    <td colspan="2" style="font-size:8.5pt;">全週總圈數</td>
+                    <td colspan="10" id="p-week-grand-total" style="font-size:10pt; text-align:center;">0 圈</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div class="print-footer">
+            <b>備註與計算標準：</b><br>
+            1. 每日由體育股長協助登記全班同學在校運動量，包含晨間、下課、體育課等時間之運動。<br>
+            2. 操場跑步每圈約 200 公尺；跳繩活動<b>每跳 200 下折算為操場 1 圈</b>（不足 200 下不予折算）。<br>
+            3. 導師陪同跑步之圈數以 <b>2 倍</b> 計入全班每日總圈數。每週五放學前請導師簽名後，由體育股長繳交至體育組。
+        </div>
+    </div>
+
+    <script>
+        // 預設 408 班範本
+        const DEFAULT_CONFIG = {
+            className: "408",
+            teacherName: "吳國榮 老師",
+            leaderName: "陳依婕、李宸緯",
+            studentNames: [
+                "游濬謙", "李晨睿", "王柏勛", "劉宸燁", "鄭又仁",
+                "簡宇辰", "", "楊晨熙", "林宏哲", "李亦修",
+                "汪昱辰", "李宸緯", "陳冠宇", "李茗堃", "林祐辰",
+                "蔡秉浩", "蔡菲芸", "陳依婕", "陳依錡", "柯祉妤",
+                "程旻薰", "陳玥筑", "王梓羽", "黃庭蓁", "李玉琳",
+                "黃樂芙", "林忻", "沈盈萱", "游禧羽", "沈芷心",
+                "吳玟熙", "吳芊妤"
+            ]
+        };
+
+        // 115 學年度第 1 學期開學週一基準日：2026/08/31
+        const SEMESTER_START_MONDAY = new Date(2026, 7, 31);
+
+        let classConfig = { ...DEFAULT_CONFIG };
+        let currentDay = 1; // 1: Mon ~ 5: Fri
+        let currentStudentSeat = null;
+        let records = {}; // Key: "seat_day" -> { run: 0, jump: 0 }
+        let teacherRuns = { 1:0, 2:0, 3:0, 4:0, 5:0 };
+
+        // 姓名遮罩（中間字轉為 ○ 保護學生隱私，A4列印自動維持全名）
+        function maskName(name) {
+            if (!name) return '';
+            if (name.length <= 1) return name;
+            if (name.length === 2) return name[0] + '○';
+            return name[0] + '○'.repeat(name.length - 2) + name[name.length - 1];
+        }
+
+        // 自動推算每週星期一至五的日期
+        function getWeekDates(weekNum) {
+            const w = parseInt(weekNum) || 1;
+            const mon = new Date(SEMESTER_START_MONDAY);
+            mon.setDate(SEMESTER_START_MONDAY.getDate() + (w - 1) * 7);
+
+            const dates = {};
+            for (let d = 1; d <= 5; d++) {
+                const cur = new Date(mon);
+                cur.setDate(mon.getDate() + (d - 1));
+                const m = cur.getMonth() + 1;
+                const date = cur.getDate();
+                dates[d] = {
+                    month: m,
+                    date: date,
+                    str: `${m}/${date}`,
+                    fullStr: `${m}月${date}日`
+                };
+            }
+            return dates;
+        }
+
+        // 偵測今天屬於開學第幾週
+        function detectCurrentWeek() {
+            const today = new Date();
+            if (today < SEMESTER_START_MONDAY) return 1;
+            const diffTime = today - SEMESTER_START_MONDAY;
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            const week = Math.floor(diffDays / 7) + 1;
+            return Math.max(1, Math.min(week, 22));
+        }
+
+        // 更新介面與列印表上的所有日期文字與班級資訊
+        function updateDateDisplays() {
+            const week = parseInt(document.getElementById('weekNum').value) || 1;
+            const dates = getWeekDates(week);
+            const daysZh = ['', '星期一', '星期二', '星期三', '星期四', '星期五'];
+
+            // UI Header
+            document.getElementById('headerDateRange').innerText = `(${dates[1].str} ~ ${dates[5].str})`;
+            document.getElementById('uiClassName').innerText = classConfig.className;
+            document.getElementById('uiTeacherName').innerText = classConfig.teacherName;
+            
+            // Mask leader names on screen
+            const maskedLeaders = classConfig.leaderName.split(/[,、\s]+/).map(maskName).join('、');
+            document.getElementById('uiLeaderName').innerText = maskedLeaders || '--';
+
+            // Print info
+            document.getElementById('p-className').innerText = classConfig.className;
+            document.getElementById('p-leaderName').innerText = classConfig.leaderName;
+            document.getElementById('p-teacherName').innerText = classConfig.teacherName;
+            document.getElementById('p-week').innerText = week;
+            document.getElementById('p-date-range').innerText = `${dates[1].str} ~ ${dates[5].str}`;
+
+            // Tabs & Print Table Headers
+            for (let d = 1; d <= 5; d++) {
+                const tab = document.getElementById(`tab-day-${d}`);
+                if (tab) tab.innerText = `${daysZh[d]} (${dates[d].str})`;
+
+                const th = document.getElementById(`p-th-${d}`);
+                if (th) th.innerText = `${daysZh[d]} (${dates[d].str})`;
+            }
+        }
+
+        function changeWeek(delta) {
+            const inp = document.getElementById('weekNum');
+            let val = (parseInt(inp.value) || 1) + delta;
+            if (val < 1) val = 1;
+            if (val > 25) val = 25;
+            inp.value = val;
+            onWeekChange();
+        }
+
+        function onWeekChange() {
+            updateDateDisplays();
+            updatePrintView();
+            saveData();
+        }
+
+        // Load data from LocalStorage
+        function loadData() {
+            // Load Class Config
+            const savedConfig = localStorage.getItem('sh150_class_config');
+            if (savedConfig) {
+                try {
+                    classConfig = JSON.parse(savedConfig);
+                } catch(e) {}
+            }
+
+            const savedRecords = localStorage.getItem(`sh150_records_${classConfig.className || 'default'}`);
+            let detected = detectCurrentWeek();
+            document.getElementById('weekNum').value = detected;
+
+            if (savedRecords) {
+                try {
+                    const parsed = JSON.parse(savedRecords);
+                    records = parsed.records || {};
+                    teacherRuns = parsed.teacherRuns || { 1:0, 2:0, 3:0, 4:0, 5:0 };
+                    if (parsed.week) document.getElementById('weekNum').value = parsed.week;
+                } catch(e) {}
+            }
+
+            // 預設切換至今天的星期 (1~5)
+            const todayDay = new Date().getDay(); // 0: Sun, 1: Mon ... 6: Sat
+            if (todayDay >= 1 && todayDay <= 5) {
+                currentDay = todayDay;
+            } else {
+                currentDay = 1;
+            }
+
+            updateDateDisplays();
+            switchDay(currentDay);
+            renderStudentGrid();
+            updatePrintView();
+        }
+
+        function saveData() {
+            const data = {
+                week: document.getElementById('weekNum').value,
+                records: records,
+                teacherRuns: teacherRuns
+            };
+            localStorage.setItem(`sh150_records_${classConfig.className || 'default'}`, JSON.stringify(data));
+            updatePrintView();
+        }
+
+        function switchDay(day) {
+            currentDay = day;
+            document.querySelectorAll('.day-tab').forEach((tab, idx) => {
+                tab.classList.toggle('active', (idx + 1) === day);
+            });
+            document.getElementById('teacherRunInput').value = teacherRuns[currentDay] || 0;
+            renderStudentGrid();
+        }
+
+        function renderStudentGrid() {
+            const grid = document.getElementById('studentGrid');
+            grid.innerHTML = '';
+
+            let dayTotal = 0;
+            const namesList = classConfig.studentNames || [];
+            const totalCount = Math.max(30, namesList.length);
+
+            for (let i = 1; i <= totalCount; i++) {
+                const sName = namesList[i - 1] || '';
+                if (!sName && i > namesList.length && namesList.length > 0) continue;
+
+                const key = `${i}_${currentDay}`;
+                const data = records[key] || { run: 0, jump: 0 };
+                const hasData = (data.run > 0 || data.jump > 0);
+
+                if (data.run > 0) dayTotal += Number(data.run);
+                if (data.jump > 0) dayTotal += Math.floor(Number(data.jump) / 200);
+
+                const card = document.createElement('div');
+                card.className = `student-card ${hasData ? 'has-data' : ''}`;
+                card.onclick = () => openModal(i, sName);
+
+                let badgeText = '';
+                if (hasData) {
+                    badgeText = `🏃${data.run || 0}圈 🪢${data.jump || 0}下`;
+                } else {
+                    badgeText = '點擊登記';
+                }
+
+                const displayName = sName ? maskName(sName) : `${String(i).padStart(2, '0')} 號`;
+
+                card.innerHTML = `
+                    <div class="student-seat">${String(i).padStart(2, '0')} 號</div>
+                    <div class="student-name">${displayName}</div>
+                    <div class="student-badge">${badgeText}</div>
+                `;
+                grid.appendChild(card);
+            }
+
+            const teaRun = (teacherRuns[currentDay] || 0) * 2;
+            dayTotal += teaRun;
+            document.getElementById('todayTotalSummary').innerText = `${dayTotal} 圈`;
+        }
+
+        function openModal(seat, name) {
+            currentStudentSeat = seat;
+            const week = parseInt(document.getElementById('weekNum').value) || 1;
+            const dates = getWeekDates(week);
+            const daysName = ['', '星期一', '星期二', '星期三', '星期四', '星期五'];
+            const displayName = name ? maskName(name) : '';
+            document.getElementById('modalStudentTitle').innerText = `${String(seat).padStart(2, '0')} ${displayName} - ${daysName[currentDay]} (${dates[currentDay].str})`;
+            
+            const key = `${seat}_${currentDay}`;
+            const data = records[key] || { run: '', jump: '' };
+            document.getElementById('inputRun').value = data.run || '';
+            document.getElementById('inputJump').value = data.jump || '';
+
+            document.getElementById('modalOverlay').classList.add('active');
+            document.getElementById('inputRun').focus();
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('active');
+        }
+
+        function addRun(val) {
+            const inp = document.getElementById('inputRun');
+            inp.value = (Number(inp.value) || 0) + val;
+        }
+
+        function setRun(val) {
+            document.getElementById('inputRun').value = val === 0 ? '' : val;
+        }
+
+        function addJump(val) {
+            const inp = document.getElementById('inputJump');
+            inp.value = (Number(inp.value) || 0) + val;
+        }
+
+        function setJump(val) {
+            document.getElementById('inputJump').value = val === 0 ? '' : val;
+        }
+
+        function saveStudentRecord() {
+            if (!currentStudentSeat) return;
+            const key = `${currentStudentSeat}_${currentDay}`;
+            const runVal = Number(document.getElementById('inputRun').value) || 0;
+            const jumpVal = Number(document.getElementById('inputJump').value) || 0;
+
+            if (runVal === 0 && jumpVal === 0) {
+                delete records[key];
+            } else {
+                records[key] = { run: runVal, jump: jumpVal };
+            }
+
+            saveData();
+            renderStudentGrid();
+            closeModal();
+        }
+
+        function saveTeacherRun() {
+            teacherRuns[currentDay] = Number(document.getElementById('teacherRunInput').value) || 0;
+            saveData();
+            renderStudentGrid();
+        }
+
+        function addTeacherRun(val) {
+            teacherRuns[currentDay] = (teacherRuns[currentDay] || 0) + val;
+            document.getElementById('teacherRunInput').value = teacherRuns[currentDay];
+            saveTeacherRun();
+        }
+
+        function updatePrintView() {
+            const tbody = document.getElementById('printTableBody');
+            tbody.innerHTML = '';
+
+            updateDateDisplays();
+
+            let dayRunSum = { 1:0, 2:0, 3:0, 4:0, 5:0 };
+            let dayJumpSum = { 1:0, 2:0, 3:0, 4:0, 5:0 };
+
+            const namesList = classConfig.studentNames || [];
+
+            for (let i = 1; i <= 35; i++) {
+                const sName = namesList[i - 1] || '';
+                const tr = document.createElement('tr');
+
+                let tdHtml = `<td>${i}</td><td>${sName}</td>`;
+                for (let d = 1; d <= 5; d++) {
+                    const key = `${i}_${d}`;
+                    const rec = records[key] || { run: '', jump: '' };
+                    const rVal = rec.run ? Number(rec.run) : '';
+                    const jVal = rec.jump ? Number(rec.jump) : '';
+
+                    if (rVal) dayRunSum[d] += rVal;
+                    if (jVal) dayJumpSum[d] += jVal;
+
+                    tdHtml += `<td>${rVal}</td><td>${jVal}</td>`;
+                }
+                tr.innerHTML = tdHtml;
+                tbody.appendChild(tr);
+            }
+
+            let grandTotal = 0;
+            for (let d = 1; d <= 5; d++) {
+                document.getElementById(`p-sum-run-${d}`).innerText = dayRunSum[d] || '';
+                const jumpConv = Math.floor(dayJumpSum[d] / 200);
+                document.getElementById(`p-sum-jump-${d}`).innerText = jumpConv > 0 ? jumpConv : (dayJumpSum[d] > 0 ? '0' : '');
+                
+                const stuDaily = dayRunSum[d] + jumpConv;
+                document.getElementById(`p-stu-total-${d}`).innerText = stuDaily > 0 ? stuDaily : '';
+
+                const tRun = teacherRuns[d] || 0;
+                document.getElementById(`p-tea-run-${d}`).innerText = tRun > 0 ? tRun : '';
+
+                const dayGrand = stuDaily + (tRun * 2);
+                document.getElementById(`p-day-grand-${d}`).innerText = dayGrand > 0 ? dayGrand : '';
+                grandTotal += dayGrand;
+            }
+
+            document.getElementById('p-week-grand-total').innerText = `${grandTotal} 圈`;
+        }
+
+        /* ── Settings Modal Functions ── */
+        function openSettingsModal() {
+            document.getElementById('cfgClassName').value = classConfig.className || '';
+            document.getElementById('cfgTeacherName').value = classConfig.teacherName || '';
+            document.getElementById('cfgLeaderName').value = classConfig.leaderName || '';
+            document.getElementById('cfgStudentNames').value = (classConfig.studentNames || []).join('\n');
+            document.getElementById('settingsModalOverlay').classList.add('active');
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModalOverlay').classList.remove('active');
+        }
+
+        function saveSettings() {
+            const rawNames = document.getElementById('cfgStudentNames').value;
+            const namesArray = rawNames.split('\n').map(n => n.trim());
+
+            classConfig.className = document.getElementById('cfgClassName').value.trim() || '班級';
+            classConfig.teacherName = document.getElementById('cfgTeacherName').value.trim() || '';
+            classConfig.leaderName = document.getElementById('cfgLeaderName').value.trim() || '';
+            classConfig.studentNames = namesArray;
+
+            localStorage.setItem('sh150_class_config', JSON.stringify(classConfig));
+            closeSettingsModal();
+            updateDateDisplays();
+            renderStudentGrid();
+            updatePrintView();
+            alert('✅ 班級設定已成功儲存並套用！');
+        }
+
+        function loadDefault408Config() {
+            if (confirm('確定要載入 408 班的預設名冊與設定嗎？')) {
+                document.getElementById('cfgClassName').value = DEFAULT_CONFIG.className;
+                document.getElementById('cfgTeacherName').value = DEFAULT_CONFIG.teacherName;
+                document.getElementById('cfgLeaderName').value = DEFAULT_CONFIG.leaderName;
+                document.getElementById('cfgStudentNames').value = DEFAULT_CONFIG.studentNames.join('\n');
+            }
+        }
+
+        /* ── Backup & Restore ── */
+        function exportData() {
+            const exportObj = {
+                classConfig: classConfig,
+                week: document.getElementById('weekNum').value,
+                records: records,
+                teacherRuns: teacherRuns,
+                exportTime: new Date().toISOString()
+            };
+            const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `SH150_${classConfig.className}_第${exportObj.week}週_運動登記備份.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importData() {
+            document.getElementById('importFileInput').click();
+        }
+
+        function handleFileImport(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const data = JSON.parse(evt.target.result);
+                    if (data.classConfig) {
+                        classConfig = data.classConfig;
+                        localStorage.setItem('sh150_class_config', JSON.stringify(classConfig));
+                    }
+                    if (data.records) records = data.records;
+                    if (data.teacherRuns) teacherRuns = data.teacherRuns;
+                    if (data.week) document.getElementById('weekNum').value = data.week;
+
+                    saveData();
+                    updateDateDisplays();
+                    renderStudentGrid();
+                    updatePrintView();
+                    alert('✅ 紀錄已成功載入！');
+                } catch(err) {
+                    alert('❌ 檔案載入失敗，格式不正確。');
+                }
+            };
+            reader.readAsText(file);
+            e.target.value = '';
+        }
+
+        function clearCurrentWeek() {
+            if (confirm(`確定要清空第 ${document.getElementById('weekNum').value} 週的所有登記紀錄嗎？`)) {
+                records = {};
+                teacherRuns = { 1:0, 2:0, 3:0, 4:0, 5:0 };
+                saveData();
+                renderStudentGrid();
+                updatePrintView();
+                alert('已清空本週紀錄。');
+            }
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadData();
+        });
+    </script>
+</body>
+</html>
