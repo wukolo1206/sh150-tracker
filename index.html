@@ -90,9 +90,55 @@
             background-color: #1d4ed8;
         }
 
-        .btn-success {
-            background-color: var(--success);
-            color: white;
+        .btn-success { background: #16a34a; color: #fff; }
+        .btn-success:hover { background: #15803d; }
+
+        /* Cloud Sync Status Indicator */
+        .cloud-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            padding: 5px 12px;
+            border-radius: 20px;
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            user-select: none;
+        }
+        .cloud-status:hover {
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            transform: translateY(-1px);
+        }
+        .cloud-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+        }
+        .cloud-status.syncing {
+            background: #fefce8;
+            color: #854d0e;
+            border-color: #fef08a;
+        }
+        .cloud-status.syncing .cloud-dot {
+            background: #eab308;
+            animation: pulse-dot 1s infinite;
+        }
+        .cloud-status.error {
+            background: #fef2f2;
+            color: #991b1b;
+            border-color: #fecaca;
+        }
+        .cloud-status.error .cloud-dot {
+            background: #ef4444;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.3; transform: scale(0.7); }
         }
 
         .btn-outline {
@@ -394,6 +440,12 @@
                 </label>
                 <button class="btn btn-outline" onclick="changeWeek(1)" title="下一週">下一週 ▶</button>
                 <span id="headerDateRange" style="font-size:0.95rem; color:#1e40af; font-weight:bold; margin: 0 6px;">(8/31 ~ 9/4)</span>
+                
+                <div id="cloudStatus" class="cloud-status" title="點擊立即手動同步至 Google 試算表" onclick="manualSync()">
+                    <span class="cloud-dot"></span>
+                    <span id="cloudStatusText">☁️ 雲端試算表已連線</span>
+                </div>
+                <a href="https://docs.google.com/spreadsheets/d/19zxbbVSalkk4OzfVYDWYVwDUKJyyvCBJD_NdKGHKfJA/edit#gid=1" target="_blank" class="btn btn-outline" style="text-decoration:none; color:#15803d; border-color:#86efac; background:#f0fdf4;" title="開啟 408 Google 試算表（學期運動排行榜與明細）">📊 運動試算表 ↗</a>
                 <a href="https://script.google.com/macros/s/AKfycbyr8GG37KxoHOyRdlkpzOAse-b2g7tDEk1AG2TsIK6UwkVf01Kh03GMhkrh7UYsW3UC/exec" target="_blank" class="btn btn-outline" style="text-decoration:none; color:#0284c7; border-color:#bae6fd; background:#f0f9ff;" title="開啟 408 班級紀錄器與座位檢查 (GAS 雲端版)">⏱️ 班級紀錄器 ↗</a>
                 <a href="universal.html" target="_blank" class="btn btn-outline" style="text-decoration:none; color:#7c2d12; border-color:#fed7aa; background:#fff7ed;" title="開啟全校各班通用版（可自訂班級與名冊）">🏫 全校通用版 ↗</a>
                 <button class="btn btn-outline" onclick="exportData()">💾 備份</button>
@@ -663,6 +715,95 @@
             }
         }
 
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyr8GG37KxoHOyRdlkpzOAse-b2g7tDEk1AG2TsIK6UwkVf01Kh03GMhkrh7UYsW3UC/exec";
+        let syncTimer = null;
+
+        function updateCloudStatus(state, text) {
+            const el = document.getElementById('cloudStatus');
+            const txt = document.getElementById('cloudStatusText');
+            if (!el || !txt) return;
+            el.className = 'cloud-status ' + (state === 'syncing' ? 'syncing' : (state === 'error' ? 'error' : ''));
+            txt.innerText = text;
+        }
+
+        // 從 Google 試算表讀取當週資料
+        async function fetchFromCloud(week) {
+            updateCloudStatus('syncing', '⏳ 讀取雲端試算表中...');
+            try {
+                const res = await fetch(`${GAS_API_URL}?api=sh150&action=getWeek&week=${week}`);
+                const json = await res.json();
+                if (json.status === 'success' && json.records) {
+                    let hasNewData = false;
+                    for (const key in json.records) {
+                        const cRec = json.records[key];
+                        if (!records[key] || ((cRec.run > 0 || cRec.jump > 0) && (!records[key].run && !records[key].jump))) {
+                            records[key] = cRec;
+                            hasNewData = true;
+                        }
+                    }
+                    if (json.teacherRuns) {
+                        for (const d in json.teacherRuns) {
+                            if (json.teacherRuns[d] > 0 && !teacherRuns[d]) {
+                                teacherRuns[d] = json.teacherRuns[d];
+                                hasNewData = true;
+                            }
+                        }
+                    }
+                    saveLocalOnly();
+                    renderStudentGrid();
+                    updatePrintView();
+                    const timeStr = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+                    updateCloudStatus('synced', `🟢 ☁️ 已同步 (${timeStr})`);
+                    syncToCloud();
+                } else {
+                    updateCloudStatus('synced', '🟢 ☁️ 雲端試算表已連線');
+                }
+            } catch (err) {
+                console.warn('雲端讀取失敗，使用本機暫存:', err);
+                updateCloudStatus('error', '⚠️ 離線使用 (已本機保存)');
+            }
+        }
+
+        // 將當週資料推送到 Google 試算表
+        function syncToCloud() {
+            if (syncTimer) clearTimeout(syncTimer);
+            updateCloudStatus('syncing', '⏳ 正在同步至 Google 試算表...');
+
+            syncTimer = setTimeout(async () => {
+                const currentWeek = parseInt(document.getElementById('weekNum').value) || 1;
+                const payload = {
+                    api: "sh150",
+                    week: currentWeek,
+                    records: records,
+                    teacherRuns: teacherRuns,
+                    source: "408_大螢幕/平板看板"
+                };
+
+                try {
+                    const res = await fetch(GAS_API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify(payload)
+                    });
+                    const json = await res.json();
+                    if (json.status === 'success') {
+                        const timeStr = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+                        updateCloudStatus('synced', `🟢 ☁️ 已同步 (${timeStr})`);
+                    } else {
+                        updateCloudStatus('error', '⚠️ 同步失敗 (已本機保存)');
+                    }
+                } catch (err) {
+                    console.warn('雲端同步失敗:', err);
+                    updateCloudStatus('error', '⚠️ 暫時離線 (已本機保存)');
+                }
+            }, 600);
+        }
+
+        function manualSync() {
+            const currentWeek = parseInt(document.getElementById('weekNum').value) || 1;
+            fetchFromCloud(currentWeek);
+        }
+
         function changeWeek(delta) {
             const inp = document.getElementById('weekNum');
             let val = (parseInt(inp.value) || 1) + delta;
@@ -675,7 +816,9 @@
         function onWeekChange() {
             updateDateDisplays();
             updatePrintView();
-            saveData();
+            saveLocalOnly();
+            const currentWeek = parseInt(document.getElementById('weekNum').value) || 1;
+            fetchFromCloud(currentWeek);
         }
 
         // Load data from LocalStorage
@@ -705,16 +848,25 @@
             switchDay(currentDay);
             renderStudentGrid();
             updatePrintView();
+
+            // 背景自動觸發雲端試算表同步
+            const currentWeek = parseInt(document.getElementById('weekNum').value) || 1;
+            fetchFromCloud(currentWeek);
         }
 
-        function saveData() {
+        function saveLocalOnly() {
             const data = {
                 week: document.getElementById('weekNum').value,
                 records: records,
                 teacherRuns: teacherRuns
             };
             localStorage.setItem('408_sh150_records', JSON.stringify(data));
+        }
+
+        function saveData() {
+            saveLocalOnly();
             updatePrintView();
+            syncToCloud();
         }
 
         function switchDay(day) {
