@@ -466,8 +466,9 @@
                 <div class="quick-btn-group">
                     <button class="quick-btn" onclick="addRun(1)">+1 圈</button>
                     <button class="quick-btn" onclick="addRun(2)">+2 圈</button>
+                    <button class="quick-btn" onclick="addRun(3)">+3 圈</button>
                     <button class="quick-btn" onclick="addRun(5)">+5 圈</button>
-                    <button class="quick-btn" onclick="setRun(0)">歸零</button>
+                    <button class="quick-btn" onclick="setRun(0)" style="color:#dc2626;">歸零</button>
                 </div>
             </div>
 
@@ -475,10 +476,11 @@
                 <label>🪢 跳繩下數（每 200 下自動折算 1 圈操場）：</label>
                 <input type="number" id="inputJump" class="form-input" min="0" step="50" placeholder="請輸入跳繩下數 (例如 400)">
                 <div class="quick-btn-group">
+                    <button class="quick-btn" onclick="addJump(50)">+50 下</button>
                     <button class="quick-btn" onclick="addJump(100)">+100 下</button>
                     <button class="quick-btn" onclick="addJump(200)">+200 下 (抵1圈)</button>
                     <button class="quick-btn" onclick="addJump(500)">+500 下</button>
-                    <button class="quick-btn" onclick="setJump(0)">歸零</button>
+                    <button class="quick-btn" onclick="setJump(0)" style="color:#dc2626;">歸零</button>
                 </div>
             </div>
 
