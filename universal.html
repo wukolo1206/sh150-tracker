@@ -317,83 +317,98 @@
             resize: vertical;
         }
 
-        /* ── Print Styles (Strict A4 Portrait Layout) ── */
-        .print-view {
+        /* ── Print Styles (Single A4 Page Fit) ── */
+        .print-container {
             display: none;
         }
 
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 6mm 10mm 6mm 10mm;
+                margin: 4mm 16mm 4mm 16mm;
             }
 
             body {
                 background: white !important;
                 padding: 0 !important;
                 margin: 0 !important;
-                color: black !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
+                font-family: "標楷體", "DFKai-SB", "BiauKai", serif !important;
             }
 
             .no-print {
                 display: none !important;
             }
 
-            .print-view {
+            .print-container {
                 display: block !important;
                 width: 93% !important;
                 max-width: 180mm !important;
-                margin: 4mm auto !important;
-                font-family: "標楷體", "DFKai-SB", "BiauKai", serif !important;
+                margin: 4mm auto 0 auto !important;
+                padding: 4mm 4px 0 4px !important;
+                box-sizing: border-box !important;
             }
 
             .print-title {
                 text-align: center;
                 font-size: 13.5pt;
                 font-weight: bold;
+                margin-top: 4px;
+                margin-bottom: 6px;
                 letter-spacing: 0.5px;
-                margin-top: 2mm;
-                margin-bottom: 1.5mm;
-                line-height: 1.2;
+                color: #000;
             }
 
-            .print-sub-info {
+            .print-sub {
                 display: flex;
                 justify-content: space-between;
-                font-size: 9pt;
+                font-size: 9.5pt;
                 font-weight: bold;
-                margin-bottom: 1.5mm;
+                margin-bottom: 5px;
+                padding: 0 2px;
+                color: #000;
             }
 
             .print-table {
                 width: 100% !important;
                 border-collapse: collapse !important;
-                table-layout: fixed !important;
-                font-size: 7.6pt !important;
+                text-align: center;
+                font-size: 8.2pt;
+                table-layout: fixed;
                 border: 1.5px solid #000 !important;
-                box-sizing: border-box !important;
             }
 
             .print-table th, .print-table td {
                 border: 1px solid #000 !important;
-                text-align: center;
-                vertical-align: middle;
-                padding: 1.1px 0px !important;
-                height: 5.6mm !important;
+                padding: 1.2px 1px !important;
+                height: 14.5px !important;
                 box-sizing: border-box;
+                color: #000;
             }
 
             .print-table th {
-                background-color: #f2f2f2 !important;
+                background-color: #f0f0f0 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
                 font-weight: bold;
             }
 
-            .print-footer {
-                margin-top: 1.5mm;
-                font-size: 8pt;
-                line-height: 1.25;
+            .th-sub {
+                font-size: 7.5pt;
+            }
+
+            .print-footer-row {
+                font-weight: bold;
+                font-size: 7.8pt;
+            }
+
+            .print-bottom-sign {
+                display: flex;
+                justify-content: space-between;
+                margin-top: 8px;
+                font-size: 9.5pt;
+                font-weight: bold;
+                padding: 0 6px;
+                color: #000;
             }
         }
     </style>
@@ -542,104 +557,82 @@
     <!-- Hidden file input for import -->
     <input type="file" id="importFileInput" style="display:none" accept=".json" onchange="handleFileImport(event)">
 
-    <!-- ── Print View (Only visible on paper) ── -->
-    <div class="print-view">
-        <div class="print-title">新北市三重區碧華國小 115 學年度第 1 學期班級每日運動圈數登記表</div>
-        <div class="print-sub-info">
-            <span>年級班級：<b id="p-className">4XX</b> 班</span>
-            <span>體育股長：<b id="p-leaderName">OOO、OOO</b></span>
-            <span>第 <b id="p-week">1</b> 週 (<span id="p-date-range">8/31~9/4</span>)</span>
-            <span>導師簽名：<b id="p-teacherName">OOO 老師</b></span>
+    <!-- ── Print View (Only visible on paper, matches 408 single A4 page) ── -->
+    <div class="print-container" id="printContainer">
+        <div class="print-title">115學年度三重區碧華國小 SH150「跑跳遊臺灣」班級每日運動圈數登記表</div>
+        <div class="print-sub">
+            <span>年級班級：<span id="p-className">4XX</span> 班</span>
+            <span>體育股長：<span id="p-leaderName">OOO、OOO</span></span>
+            <span id="printWeekSpan">第 &nbsp;&nbsp;&nbsp; 週（ &nbsp;&nbsp;&nbsp; 月 &nbsp;&nbsp;&nbsp; 日～ &nbsp;&nbsp;&nbsp; 月 &nbsp;&nbsp;&nbsp; 日）</span>
         </div>
 
         <table class="print-table">
             <thead>
                 <tr>
-                    <th rowspan="2" style="width: 20px;">座<br>號</th>
-                    <th rowspan="2" style="width: 50px;">姓 名</th>
-                    <th colspan="2" id="p-th-1">星期一 (8/31)</th>
-                    <th colspan="2" id="p-th-2">星期二 (9/1)</th>
-                    <th colspan="2" id="p-th-3">星期三 (9/2)</th>
-                    <th colspan="2" id="p-th-4">星期四 (9/3)</th>
-                    <th colspan="2" id="p-th-5">星期五 (9/4)</th>
+                    <th rowspan="2" style="width:5%;">座號</th>
+                    <th rowspan="2" style="width:11%;">姓名</th>
+                    <th colspan="2" style="width:16.8%;" id="print-th-1">星期一</th>
+                    <th colspan="2" style="width:16.8%;" id="print-th-2">星期二</th>
+                    <th colspan="2" style="width:16.8%;" id="print-th-3">星期三</th>
+                    <th colspan="2" style="width:16.8%;" id="print-th-4">星期四</th>
+                    <th colspan="2" style="width:16.8%;" id="print-th-5">星期五</th>
                 </tr>
                 <tr>
-                    <th style="width: 25px;">跑步<br>圈數</th>
-                    <th style="width: 28px;">跳繩<br>下數</th>
-                    <th style="width: 25px;">跑步<br>圈數</th>
-                    <th style="width: 28px;">跳繩<br>下數</th>
-                    <th style="width: 25px;">跑步<br>圈數</th>
-                    <th style="width: 28px;">跳繩<br>下數</th>
-                    <th style="width: 25px;">跑步<br>圈數</th>
-                    <th style="width: 28px;">跳繩<br>下數</th>
-                    <th style="width: 25px;">跑步<br>圈數</th>
-                    <th style="width: 28px;">跳繩<br>下數</th>
+                    <th class="th-sub">跑(圈)</th>
+                    <th class="th-sub">跳(下)</th>
+                    <th class="th-sub">跑(圈)</th>
+                    <th class="th-sub">跳(下)</th>
+                    <th class="th-sub">跑(圈)</th>
+                    <th class="th-sub">跳(下)</th>
+                    <th class="th-sub">跑(圈)</th>
+                    <th class="th-sub">跳(下)</th>
+                    <th class="th-sub">跑(圈)</th>
+                    <th class="th-sub">跳(下)</th>
                 </tr>
             </thead>
-            <tbody id="printTableBody"></tbody>
+            <tbody id="printTableBody">
+                <!-- 35 rows generated by JS -->
+            </tbody>
             <tfoot>
-                <tr style="font-weight:bold; background-color:#f9f9f9;">
-                    <td colspan="2">學生跑步圈數</td>
-                    <td id="p-sum-run-1">0</td>
-                    <td>-</td>
-                    <td id="p-sum-run-2">0</td>
-                    <td>-</td>
-                    <td id="p-sum-run-3">0</td>
-                    <td>-</td>
-                    <td id="p-sum-run-4">0</td>
-                    <td>-</td>
-                    <td id="p-sum-run-5">0</td>
-                    <td>-</td>
+                <tr class="print-footer-row">
+                    <td colspan="2">學生每日跑步合共 (圈)</td>
+                    <td id="p-sum-run-1">-</td><td>-</td>
+                    <td id="p-sum-run-2">-</td><td>-</td>
+                    <td id="p-sum-run-3">-</td><td>-</td>
+                    <td id="p-sum-run-4">-</td><td>-</td>
+                    <td id="p-sum-run-5">-</td><td>-</td>
                 </tr>
-                <tr style="font-weight:bold; background-color:#f9f9f9;">
-                    <td colspan="2">跳繩折抵圈數<br><span style="font-size:6.5pt; font-weight:normal;">(200下=1圈)</span></td>
-                    <td>-</td>
-                    <td id="p-sum-jump-1">0</td>
-                    <td>-</td>
-                    <td id="p-sum-jump-2">0</td>
-                    <td>-</td>
-                    <td id="p-sum-jump-3">0</td>
-                    <td>-</td>
-                    <td id="p-sum-jump-4">0</td>
-                    <td>-</td>
-                    <td id="p-sum-jump-5">0</td>
+                <tr class="print-footer-row">
+                    <td colspan="2">學生跳繩總下數 (折算圈)</td>
+                    <td colspan="2" id="p-sum-jump-1">0</td>
+                    <td colspan="2" id="p-sum-jump-2">0</td>
+                    <td colspan="2" id="p-sum-jump-3">0</td>
+                    <td colspan="2" id="p-sum-jump-4">0</td>
+                    <td colspan="2" id="p-sum-jump-5">0</td>
                 </tr>
-                <tr style="font-weight:bold; background-color:#f9f9f9;">
-                    <td colspan="2">學生每日總圈數</td>
-                    <td colspan="2" id="p-stu-total-1">0</td>
-                    <td colspan="2" id="p-stu-total-2">0</td>
-                    <td colspan="2" id="p-stu-total-3">0</td>
-                    <td colspan="2" id="p-stu-total-4">0</td>
-                    <td colspan="2" id="p-stu-total-5">0</td>
+                <tr class="print-footer-row">
+                    <td colspan="2">導師每日跑步圈數 (加倍折算)</td>
+                    <td colspan="2" id="p-tea-1">-</td>
+                    <td colspan="2" id="p-tea-2">-</td>
+                    <td colspan="2" id="p-tea-3">-</td>
+                    <td colspan="2" id="p-tea-4">-</td>
+                    <td colspan="2" id="p-tea-5">-</td>
                 </tr>
-                <tr style="font-weight:bold; background-color:#f9f9f9;">
-                    <td colspan="2">導師跑步圈數</td>
-                    <td colspan="2" id="p-tea-run-1">0</td>
-                    <td colspan="2" id="p-tea-run-2">0</td>
-                    <td colspan="2" id="p-tea-run-3">0</td>
-                    <td colspan="2" id="p-tea-run-4">0</td>
-                    <td colspan="2" id="p-tea-run-5">0</td>
-                </tr>
-                <tr style="font-weight:bold; background-color:#e6f2ff;">
-                    <td colspan="2">全班每日總圈數<br><span style="font-size:6.5pt; font-weight:normal;">(導師圈數$\times 2$加計)</span></td>
-                    <td colspan="2" id="p-day-grand-1" style="font-size:8.5pt;">0</td>
-                    <td colspan="2" id="p-day-grand-2" style="font-size:8.5pt;">0</td>
-                    <td colspan="2" id="p-day-grand-3" style="font-size:8.5pt;">0</td>
-                    <td colspan="2" id="p-day-grand-4" style="font-size:8.5pt;">0</td>
-                    <td colspan="2" id="p-day-grand-5" style="font-size:8.5pt;">0</td>
-                </tr>
-                <tr style="font-weight:bold; background-color:#dbeafe;">
-                    <td colspan="2" style="font-size:8.5pt;">全週總圈數</td>
-                    <td colspan="10" id="p-week-grand-total" style="font-size:10pt; text-align:center;">0 圈</td>
+                <tr class="print-footer-row" style="background:#f9f9f9;">
+                    <td colspan="2">當日全班採計總圈數</td>
+                    <td colspan="2" id="p-tot-1" style="font-size:10pt;">0</td>
+                    <td colspan="2" id="p-tot-2" style="font-size:10pt;">0</td>
+                    <td colspan="2" id="p-tot-3" style="font-size:10pt;">0</td>
+                    <td colspan="2" id="p-tot-4" style="font-size:10pt;">0</td>
+                    <td colspan="2" id="p-tot-5" style="font-size:10pt;">0</td>
                 </tr>
             </tfoot>
         </table>
 
-        <div class="print-footer">
-            <b>備註與計算標準：</b><br>
-            1. 每日由體育股長協助登記全班同學在校運動量，包含晨間、下課、體育課等時間之運動。<br>
-            2. 操場跑步每圈約 200 公尺；跳繩活動<b>每跳 200 下折算為操場 1 圈</b>（不足 200 下不予折算）。<br>
-            3. 導師陪同跑步之圈數以 <b>2 倍</b> 計入全班每日總圈數。每週五放學前請導師簽名後，由體育股長繳交至體育組。
+        <div class="print-bottom-sign">
+            <span id="printTotalGrand">總圈數(導師)： ________ 圈</span>
+            <span>體育組：_______________</span>
+            <span>學務主任：_______________</span>
         </div>
     </div>
 
@@ -721,19 +714,26 @@
             document.getElementById('uiLeaderName').innerText = maskedLeaders || lName;
 
             // Print info
-            document.getElementById('p-className').innerText = cName;
-            document.getElementById('p-leaderName').innerText = lName;
-            document.getElementById('p-teacherName').innerText = tName;
-            document.getElementById('p-week').innerText = week;
-            document.getElementById('p-date-range').innerText = `${dates[1].str} ~ ${dates[5].str}`;
+            const pClass = document.getElementById('p-className');
+            if (pClass) pClass.innerText = cName;
+            const pLeader = document.getElementById('p-leaderName');
+            if (pLeader) pLeader.innerText = lName;
+
+            // 列印表頭週次與日期
+            const printWeek = document.getElementById('printWeekSpan');
+            if (printWeek) {
+                printWeek.innerHTML = `第 &nbsp;<b>${week}</b>&nbsp; 週（ &nbsp;<b>${dates[1].month}</b>&nbsp; 月 &nbsp;<b>${dates[1].date}</b>&nbsp; 日 ～ &nbsp;<b>${dates[5].month}</b>&nbsp; 月 &nbsp;<b>${dates[5].date}</b>&nbsp; 日 ）`;
+            }
 
             // Tabs & Print Table Headers
             for (let d = 1; d <= 5; d++) {
                 const tab = document.getElementById(`tab-day-${d}`);
                 if (tab) tab.innerText = `${daysZh[d]} (${dates[d].str})`;
 
-                const th = document.getElementById(`p-th-${d}`);
-                if (th) th.innerText = `${daysZh[d]} (${dates[d].str})`;
+                const th = document.getElementById(`print-th-${d}`);
+                if (th) {
+                    th.innerHTML = `${daysZh[d]}<br><span style="font-size:7.5pt; font-weight:normal;">(${dates[d].str})</span>`;
+                }
             }
         }
 
@@ -970,18 +970,16 @@
                 const jumpConv = Math.floor(dayJumpSum[d] / 200);
                 document.getElementById(`p-sum-jump-${d}`).innerText = jumpConv > 0 ? jumpConv : (dayJumpSum[d] > 0 ? '0' : '');
                 
-                const stuDaily = dayRunSum[d] + jumpConv;
-                document.getElementById(`p-stu-total-${d}`).innerText = stuDaily > 0 ? stuDaily : '';
+                const tea = teacherRuns[d] || 0;
+                const teaDouble = tea * 2;
+                document.getElementById(`p-tea-${d}`).innerText = tea > 0 ? `${tea}*2=${teaDouble}` : '';
 
-                const tRun = teacherRuns[d] || 0;
-                document.getElementById(`p-tea-run-${d}`).innerText = tRun > 0 ? tRun : '';
-
-                const dayGrand = stuDaily + (tRun * 2);
-                document.getElementById(`p-day-grand-${d}`).innerText = dayGrand > 0 ? dayGrand : '';
-                grandTotal += dayGrand;
+                const dayTotal = dayRunSum[d] + jumpConv + teaDouble;
+                document.getElementById(`p-tot-${d}`).innerText = dayTotal > 0 ? dayTotal : '';
+                grandTotal += dayTotal;
             }
 
-            document.getElementById('p-week-grand-total').innerText = `${grandTotal} 圈`;
+            document.getElementById('printTotalGrand').innerHTML = `總圈數(導師)： <b>${grandTotal}</b> 圈`;
         }
 
         /* ── Settings Modal Functions ── */
