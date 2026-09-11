@@ -410,6 +410,10 @@
                 padding: 0 6px;
                 color: #000;
             }
+
+            .modal-overlay {
+                display: none !important;
+            }
         }
     </style>
 </head>
@@ -426,7 +430,7 @@
                 <button class="btn btn-settings" onclick="openSettingsModal()" title="設定年級班級與名冊">⚙️ 班級設定 / 貼上名冊</button>
                 <button class="btn btn-outline" onclick="changeWeek(-1)" title="上一週">◀ 上一週</button>
                 <label style="font-weight:bold; font-size:1.05rem;">
-                    第 <input type="number" id="weekNum" value="1" min="1" max="25" style="width:50px; padding:4px; font-size:1.1rem; text-align:center; font-weight:bold;" onchange="onWeekChange()"> 週
+                    第 <input type="number" id="weekNum" value="1" min="1" max="22" style="width:50px; padding:4px; font-size:1.1rem; text-align:center; font-weight:bold;" onchange="onWeekChange()"> 週
                 </label>
                 <button class="btn btn-outline" onclick="changeWeek(1)" title="下一週">下一週 ▶</button>
                 <span id="headerDateRange" style="font-size:0.95rem; color:#1e40af; font-weight:bold; margin: 0 4px;">(8/31 ~ 9/4)</span>
@@ -648,6 +652,8 @@
 
         // 115 學年度第 1 學期開學週一基準日：2026/08/31
         const SEMESTER_START_MONDAY = new Date(2026, 7, 31);
+        const MAX_WEEK = 22;
+        const STORAGE_KEY = 'sh150_universal_all_records';
 
         let classConfig = { ...DEFAULT_CONFIG };
         let currentWeek = 1;
@@ -667,8 +673,8 @@
 
         // 自動推算每週星期一至五的日期
         function getWeekDates(weekNum) {
-            const w = parseInt(weekNum) || 1;
-            const mon = new Date(SEMESTER_START_MONDAY);
+            const w = Math.max(1, Math.min(parseInt(weekNum) || 1, MAX_WEEK));
+            const mon = new Date(SEMEESTER_START_MONDAY);
             mon.setDate(SEMESTER_START_MONDAY.getDate() + (w - 1) * 7);
 
             const dates = {};
@@ -694,7 +700,7 @@
             const diffTime = today - SEMESTER_START_MONDAY;
             const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
             const week = Math.floor(diffDays / 7) + 1;
-            return Math.max(1, Math.min(week, 22));
+            return Math.max(1, Math.min(week, MAX_WEEK));
         }
 
         // 更新介面與列印表上的所有日期文字與班級資訊
@@ -756,7 +762,7 @@
             const inp = document.getElementById('weekNum');
             let val = (parseInt(inp.value) || 1) + delta;
             if (val < 1) val = 1;
-            if (val > 25) val = 25;
+            if (val > MAX_WEEK) val = MAX_WEEK;
             inp.value = val;
             onWeekChange();
         }
@@ -770,7 +776,7 @@
 
             currentWeek = parseInt(document.getElementById('weekNum').value) || 1;
             if (currentWeek < 1) currentWeek = 1;
-            if (currentWeek > 25) currentWeek = 25;
+            if (currentWeek > MAX_WEEK) currentWeek = MAX_WEEK;
             document.getElementById('weekNum').value = currentWeek;
 
             loadCurrentWeekData();
@@ -784,27 +790,39 @@
         // Load data from LocalStorage
         function loadData() {
             // Load Class Config
-            const savedConfig = localStorage.getItem('sh150_class_config');
-            if (savedConfig) {
-                try {
+            try {
+                const savedConfig = localStorage.getItem('sh150_class_config');
+                if (savedConfig) {
                     const parsed = JSON.parse(savedConfig);
                     classConfig = { ...DEFAULT_CONFIG, ...parsed };
                     if (!classConfig.studentCount || parseInt(classConfig.studentCount) < 10) {
                         classConfig.studentCount = 35;
                     }
                     if (Array.isArray(classConfig.studentNames)) {
-                        classConfig.studentNames = classConfig.studentNames.filter(n => n && n.trim());
+                        while (classConfig.studentNames.length > 0 && classConfig.studentNames[classConfig.studentNames.length - 1] === '') {
+                            classConfig.studentNames.pop();
+                        }
                     } else {
                         classConfig.studentNames = [];
                     }
-                } catch(e) {
+                } else {
                     classConfig = { ...DEFAULT_CONFIG };
                 }
-            } else {
+            } catch(e) {
                 classConfig = { ...DEFAULT_CONFIG };
             }
 
-            const savedRecords = localStorage.getItem(`sh150_records_${classConfig.className || 'default'}`);
+            // 支援統一 key 與舊版 key 自動平滑遷移
+            let savedRecords = null;
+            try {
+                savedRecords = localStorage.getItem(STORAGE_KEY);
+                if (!savedRecords) {
+                    savedRecords = localStorage.getItem(`sh150_records_${classConfig.className || 'default'}`) || 
+                                  localStorage.getItem('sh150_records_4XX') || 
+                                  localStorage.getItem('sh150_records_default');
+                }
+            } catch(e) {}
+
             let detected = detectCurrentWeek();
             currentWeek = detected;
             allWeeksData = {};
@@ -814,7 +832,7 @@
                     const parsed = JSON.parse(savedRecords);
                     if (parsed.allWeeksData && typeof parsed.allWeeksData === 'object') {
                         allWeeksData = parsed.allWeeksData;
-                    } else if (parsed.records) {
+                    } else if (parsed.records && typeof parsed.records === 'object') {
                         // 平滑相容舊版單週格式：自動移入當前週次
                         const oldW = parsed.week ? parseInt(parsed.week) : detected;
                         allWeeksData[oldW] = {
@@ -823,7 +841,7 @@
                         };
                     }
                     if (parsed.currentWeek) {
-                        currentWeek = parseInt(parsed.currentWeek) || detected;
+                        currentWeek = Math.max(1, Math.min(parseInt(parsed.currentWeek) || detected, MAX_WEEK));
                     }
                 } catch(e) {}
             }
@@ -855,7 +873,11 @@
                 currentWeek: currentWeek,
                 allWeeksData: allWeeksData
             };
-            localStorage.setItem(`sh150_records_${classConfig.className || 'default'}`, JSON.stringify(data));
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            } catch(e) {
+                console.warn('LocalStorage 儲存失敗:', e);
+            }
             updatePrintView();
         }
 
@@ -872,7 +894,8 @@
             const grid = document.getElementById('studentGrid');
             grid.innerHTML = '';
 
-            let dayTotal = 0;
+            let dayRunSum = 0;
+            let dayJumpSum = 0;
             const namesList = Array.isArray(classConfig.studentNames) ? classConfig.studentNames : [];
             // 若有貼名單，人數以名單長度為準；若無名單（純座號），以設定人數為準（預設35）
             const count = namesList.length > 0 ? namesList.length : (parseInt(classConfig.studentCount) || 35);
@@ -884,12 +907,15 @@
                 const data = records[key] || { run: 0, jump: 0 };
                 const hasData = (data.run > 0 || data.jump > 0);
 
-                if (data.run > 0) dayTotal += Number(data.run);
-                if (data.jump > 0) dayTotal += Math.floor(Number(data.jump) / 200);
+                if (data.run > 0) dayRunSum += Number(data.run);
+                if (data.jump > 0) dayJumpSum += Number(data.jump);
 
                 const card = document.createElement('div');
                 card.className = `student-card ${hasData ? 'has-data' : ''}`;
+                card.setAttribute('role', 'button');
+                card.setAttribute('tabindex', '0');
                 card.onclick = () => openModal(i, sName);
+                card.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(i, sName); } };
 
                 let badgeText = '';
                 if (hasData) {
@@ -908,8 +934,10 @@
                 grid.appendChild(card);
             }
 
+            // 統計規則完全對齊官方標準：全班當日跳繩加總後每 200 下折算 1 圈
+            const jumpConv = Math.floor(dayJumpSum / 200);
             const teaRun = (teacherRuns[currentDay] || 0) * 2;
-            dayTotal += teaRun;
+            const dayTotal = dayRunSum + jumpConv + teaRun;
             document.getElementById('todayTotalSummary').innerText = `${dayTotal} 圈`;
         }
 
@@ -936,27 +964,27 @@
 
         function addRun(val) {
             const inp = document.getElementById('inputRun');
-            inp.value = (Number(inp.value) || 0) + val;
+            inp.value = Math.max(0, Math.min(50, (Number(inp.value) || 0) + val));
         }
 
         function setRun(val) {
-            document.getElementById('inputRun').value = val === 0 ? '' : val;
+            document.getElementById('inputRun').value = val === 0 ? '' : Math.max(0, Math.min(50, val));
         }
 
         function addJump(val) {
             const inp = document.getElementById('inputJump');
-            inp.value = (Number(inp.value) || 0) + val;
+            inp.value = Math.max(0, Math.min(10000, (Number(inp.value) || 0) + val));
         }
 
         function setJump(val) {
-            document.getElementById('inputJump').value = val === 0 ? '' : val;
+            document.getElementById('inputJump').value = val === 0 ? '' : Math.max(0, Math.min(10000, val));
         }
 
         function saveStudentRecord() {
             if (!currentStudentSeat) return;
             const key = `${currentStudentSeat}_${currentDay}`;
-            const runVal = Number(document.getElementById('inputRun').value) || 0;
-            const jumpVal = Number(document.getElementById('inputJump').value) || 0;
+            const runVal = Math.max(0, Math.min(50, Math.floor(Number(document.getElementById('inputRun').value) || 0)));
+            const jumpVal = Math.max(0, Math.min(10000, Math.floor(Number(document.getElementById('inputJump').value) || 0)));
 
             if (runVal === 0 && jumpVal === 0) {
                 delete records[key];
@@ -970,19 +998,19 @@
         }
 
         function saveTeacherRun() {
-            teacherRuns[currentDay] = Number(document.getElementById('teacherRunInput').value) || 0;
+            teacherRuns[currentDay] = Math.max(0, Math.min(50, Math.floor(Number(document.getElementById('teacherRunInput').value) || 0)));
             saveData();
             renderStudentGrid();
         }
 
         function addTeacherRun(val) {
-            teacherRuns[currentDay] = (teacherRuns[currentDay] || 0) + val;
+            teacherRuns[currentDay] = Math.max(0, Math.min(50, (teacherRuns[currentDay] || 0) + val));
             document.getElementById('teacherRunInput').value = teacherRuns[currentDay];
             saveTeacherRun();
         }
 
         function setTeacherRun(val) {
-            teacherRuns[currentDay] = val;
+            teacherRuns[currentDay] = Math.max(0, Math.min(50, val));
             document.getElementById('teacherRunInput').value = val === 0 ? '' : val;
             saveTeacherRun();
         }
@@ -1004,7 +1032,13 @@
                 const sName = namesList[i - 1] || '';
                 const tr = document.createElement('tr');
 
-                let tdHtml = `<td>${i}</td><td>${sName}</td>`;
+                const tdSeat = document.createElement('td');
+                tdSeat.textContent = i;
+                const tdName = document.createElement('td');
+                tdName.textContent = sName;
+                tr.appendChild(tdSeat);
+                tr.appendChild(tdName);
+
                 for (let d = 1; d <= 5; d++) {
                     const key = `${i}_${d}`;
                     const rec = records[key] || { run: '', jump: '' };
@@ -1014,9 +1048,13 @@
                     if (rVal) dayRunSum[d] += rVal;
                     if (jVal) dayJumpSum[d] += jVal;
 
-                    tdHtml += `<td>${rVal}</td><td>${jVal}</td>`;
+                    const tdRun = document.createElement('td');
+                    tdRun.textContent = rVal;
+                    const tdJump = document.createElement('td');
+                    tdJump.textContent = jVal;
+                    tr.appendChild(tdRun);
+                    tr.appendChild(tdJump);
                 }
-                tr.innerHTML = tdHtml;
                 tbody.appendChild(tr);
             }
 
@@ -1058,7 +1096,7 @@
             const namesArray = rawNames.split('\n')
                 .map(n => n.replace(/^\d+[\s\.\、\t]+/, '').trim());
             
-            // 去除末尾空行
+            // 去除末尾空行，保留中間空位
             while (namesArray.length > 0 && namesArray[namesArray.length - 1] === '') {
                 namesArray.pop();
             }
@@ -1074,7 +1112,10 @@
             }
             classConfig.studentNames = namesArray;
 
-            localStorage.setItem('sh150_class_config', JSON.stringify(classConfig));
+            try {
+                localStorage.setItem('sh150_class_config', JSON.stringify(classConfig));
+            } catch(e) {}
+
             closeSettingsModal();
             updateDateDisplays();
             renderStudentGrid();
@@ -1116,6 +1157,9 @@
         }
 
         function importData() {
+            if (!confirm('⚠️ 匯入備份將會覆蓋當前班級設定與所有登記紀錄，確定要載入嗎？')) {
+                return;
+            }
             document.getElementById('importFileInput').click();
         }
 
@@ -1126,13 +1170,18 @@
             reader.onload = function(evt) {
                 try {
                     const data = JSON.parse(evt.target.result);
-                    if (data.classConfig) {
-                        classConfig = data.classConfig;
-                        localStorage.setItem('sh150_class_config', JSON.stringify(classConfig));
+                    if (!data || typeof data !== 'object') {
+                        throw new Error('Invalid JSON');
+                    }
+                    if (data.classConfig && typeof data.classConfig === 'object') {
+                        classConfig = { ...DEFAULT_CONFIG, ...data.classConfig };
+                        try {
+                            localStorage.setItem('sh150_class_config', JSON.stringify(classConfig));
+                        } catch(err) {}
                     }
                     if (data.allWeeksData && typeof data.allWeeksData === 'object') {
                         allWeeksData = data.allWeeksData;
-                    } else if (data.records) {
+                    } else if (data.records && typeof data.records === 'object') {
                         // 舊版單週備份檔相容
                         const w = data.week ? parseInt(data.week) : currentWeek;
                         allWeeksData = {};
@@ -1142,9 +1191,9 @@
                         };
                     }
                     if (data.currentWeek) {
-                        currentWeek = parseInt(data.currentWeek) || 1;
+                        currentWeek = Math.max(1, Math.min(parseInt(data.currentWeek) || 1, MAX_WEEK));
                     } else if (data.week) {
-                        currentWeek = parseInt(data.week) || 1;
+                        currentWeek = Math.max(1, Math.min(parseInt(data.week) || 1, MAX_WEEK));
                     }
                     document.getElementById('weekNum').value = currentWeek;
 
@@ -1156,7 +1205,7 @@
                     updatePrintView();
                     alert('✅ 備份資料已成功載入！');
                 } catch(err) {
-                    alert('❌ 檔案載入失敗，格式不正確。');
+                    alert('❌ 檔案載入失敗，檔案格式不正確。');
                 }
             };
             reader.readAsText(file);
