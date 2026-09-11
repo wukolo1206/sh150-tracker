@@ -674,7 +674,7 @@
         // 自動推算每週星期一至五的日期
         function getWeekDates(weekNum) {
             const w = Math.max(1, Math.min(parseInt(weekNum) || 1, MAX_WEEK));
-            const mon = new Date(SEMEESTER_START_MONDAY);
+            const mon = new Date(SEMESTER_START_MONDAY);
             mon.setDate(SEMESTER_START_MONDAY.getDate() + (w - 1) * 7);
 
             const dates = {};
