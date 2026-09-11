@@ -840,9 +840,7 @@
                             teacherRuns: parsed.teacherRuns || { 1:0, 2:0, 3:0, 4:0, 5:0 }
                         };
                     }
-                    if (parsed.currentWeek) {
-                        currentWeek = Math.max(1, Math.min(parseInt(parsed.currentWeek) || detected, MAX_WEEK));
-                    }
+                    // 每次重新開啟時以今天日期判定週次；allWeeksData 仍保留所有週次紀錄。
                 } catch(e) {}
             }
 
