@@ -455,11 +455,12 @@
                 <span>🏃 導師跑步圈數登記（全班總圈數 × 2 倍加成）：</span>
             </div>
             <div style="display:flex; align-items:center; gap:8px;">
-                <input type="number" id="teacherRunInput" min="0" max="50" placeholder="0" style="width:70px; padding:6px; font-size:1.1rem; text-align:center; border:1px solid #cbd5e1; border-radius:6px;" onchange="saveTeacherRun()">
+                <input type="number" id="teacherRunInput" min="0" max="50" placeholder="0" style="width:70px; padding:6px; font-size:1.1rem; text-align:center; border:1px solid #cbd5e1; border-radius:6px;" onchange="saveTeacherRun()" onkeydown="if(event.key==='Enter') saveTeacherRun()">
                 <span style="font-weight:bold;">圈</span>
                 <button class="btn btn-outline" onclick="addTeacherRun(1)">+1圈</button>
                 <button class="btn btn-outline" onclick="addTeacherRun(2)">+2圈</button>
                 <button class="btn btn-outline" onclick="addTeacherRun(5)">+5圈</button>
+                <button class="btn btn-outline" onclick="setTeacherRun(0)" style="color:#dc2626;">歸零</button>
             </div>
             <div style="font-weight:bold; color:#1e3a8a;">
                 今日全班預估總圈數：<span id="todayTotalSummary" style="font-size:1.3rem; color:#dc2626;">0 圈</span>
@@ -477,7 +478,7 @@
 
             <div class="form-group">
                 <label>🏃 操場跑步（圈數）：</label>
-                <input type="number" id="inputRun" class="form-input" min="0" max="50" placeholder="請輸入跑步圈數 (例如 2)">
+                <input type="number" id="inputRun" class="form-input" min="0" max="50" placeholder="請輸入跑步圈數 (例如 2)" onkeydown="if(event.key==='Enter') saveStudentRecord()">
                 <div class="quick-btn-group">
                     <button class="quick-btn" onclick="addRun(1)">+1 圈</button>
                     <button class="quick-btn" onclick="addRun(2)">+2 圈</button>
@@ -489,7 +490,7 @@
 
             <div class="form-group" style="margin-top:16px;">
                 <label>🪢 跳繩下數（每 200 下自動折算 1 圈操場）：</label>
-                <input type="number" id="inputJump" class="form-input" min="0" step="50" placeholder="請輸入跳繩下數 (例如 400)">
+                <input type="number" id="inputJump" class="form-input" min="0" step="50" placeholder="請輸入跳繩下數 (例如 400)" onkeydown="if(event.key==='Enter') saveStudentRecord()">
                 <div class="quick-btn-group">
                     <button class="quick-btn" onclick="addJump(50)">+50 下</button>
                     <button class="quick-btn" onclick="addJump(100)">+100 下</button>
@@ -649,10 +650,12 @@
         const SEMESTER_START_MONDAY = new Date(2026, 7, 31);
 
         let classConfig = { ...DEFAULT_CONFIG };
+        let currentWeek = 1;
         let currentDay = 1; // 1: Mon ~ 5: Fri
         let currentStudentSeat = null;
-        let records = {}; // Key: "seat_day" -> { run: 0, jump: 0 }
-        let teacherRuns = { 1:0, 2:0, 3:0, 4:0, 5:0 };
+        let allWeeksData = {}; // Key: weekNum -> { records: {}, teacherRuns: { 1:0, 2:0, 3:0, 4:0, 5:0 } }
+        let records = {}; // 當前選中週次之 records: { "seat_day": { run, jump } }
+        let teacherRuns = { 1:0, 2:0, 3:0, 4:0, 5:0 }; // 當前選中週次之 teacherRuns
 
         // 姓名遮罩（中間字轉為 ○ 保護學生隱私，A4列印自動維持全名）
         function maskName(name) {
@@ -696,7 +699,7 @@
 
         // 更新介面與列印表上的所有日期文字與班級資訊
         function updateDateDisplays() {
-            const week = parseInt(document.getElementById('weekNum').value) || 1;
+            const week = currentWeek;
             const dates = getWeekDates(week);
             const daysZh = ['', '星期一', '星期二', '星期三', '星期四', '星期五'];
 
@@ -737,6 +740,18 @@
             }
         }
 
+        // 載入當前週次的 records 與 teacherRuns
+        function loadCurrentWeekData() {
+            if (!allWeeksData[currentWeek]) {
+                allWeeksData[currentWeek] = {
+                    records: {},
+                    teacherRuns: { 1:0, 2:0, 3:0, 4:0, 5:0 }
+                };
+            }
+            records = allWeeksData[currentWeek].records || {};
+            teacherRuns = allWeeksData[currentWeek].teacherRuns || { 1:0, 2:0, 3:0, 4:0, 5:0 };
+        }
+
         function changeWeek(delta) {
             const inp = document.getElementById('weekNum');
             let val = (parseInt(inp.value) || 1) + delta;
@@ -747,7 +762,21 @@
         }
 
         function onWeekChange() {
+            // 切換前確保儲存當前週的資料
+            allWeeksData[currentWeek] = {
+                records: records,
+                teacherRuns: teacherRuns
+            };
+
+            currentWeek = parseInt(document.getElementById('weekNum').value) || 1;
+            if (currentWeek < 1) currentWeek = 1;
+            if (currentWeek > 25) currentWeek = 25;
+            document.getElementById('weekNum').value = currentWeek;
+
+            loadCurrentWeekData();
             updateDateDisplays();
+            switchDay(currentDay);
+            renderStudentGrid();
             updatePrintView();
             saveData();
         }
@@ -777,16 +806,30 @@
 
             const savedRecords = localStorage.getItem(`sh150_records_${classConfig.className || 'default'}`);
             let detected = detectCurrentWeek();
-            document.getElementById('weekNum').value = detected;
+            currentWeek = detected;
+            allWeeksData = {};
 
             if (savedRecords) {
                 try {
                     const parsed = JSON.parse(savedRecords);
-                    records = parsed.records || {};
-                    teacherRuns = parsed.teacherRuns || { 1:0, 2:0, 3:0, 4:0, 5:0 };
-                    if (parsed.week) document.getElementById('weekNum').value = parsed.week;
+                    if (parsed.allWeeksData && typeof parsed.allWeeksData === 'object') {
+                        allWeeksData = parsed.allWeeksData;
+                    } else if (parsed.records) {
+                        // 平滑相容舊版單週格式：自動移入當前週次
+                        const oldW = parsed.week ? parseInt(parsed.week) : detected;
+                        allWeeksData[oldW] = {
+                            records: parsed.records || {},
+                            teacherRuns: parsed.teacherRuns || { 1:0, 2:0, 3:0, 4:0, 5:0 }
+                        };
+                    }
+                    if (parsed.currentWeek) {
+                        currentWeek = parseInt(parsed.currentWeek) || detected;
+                    }
                 } catch(e) {}
             }
+
+            document.getElementById('weekNum').value = currentWeek;
+            loadCurrentWeekData();
 
             // 預設切換至今天的星期 (1~5)
             const todayDay = new Date().getDay(); // 0: Sun, 1: Mon ... 6: Sat
@@ -803,10 +846,14 @@
         }
 
         function saveData() {
-            const data = {
-                week: document.getElementById('weekNum').value,
+            allWeeksData[currentWeek] = {
                 records: records,
                 teacherRuns: teacherRuns
+            };
+            const data = {
+                version: 2,
+                currentWeek: currentWeek,
+                allWeeksData: allWeeksData
             };
             localStorage.setItem(`sh150_records_${classConfig.className || 'default'}`, JSON.stringify(data));
             updatePrintView();
@@ -827,7 +874,8 @@
 
             let dayTotal = 0;
             const namesList = Array.isArray(classConfig.studentNames) ? classConfig.studentNames : [];
-            const count = Math.max(35, parseInt(classConfig.studentCount) || 35, namesList.length);
+            // 若有貼名單，人數以名單長度為準；若無名單（純座號），以設定人數為準（預設35）
+            const count = namesList.length > 0 ? namesList.length : (parseInt(classConfig.studentCount) || 35);
 
             for (let i = 1; i <= count; i++) {
                 const sName = (namesList[i - 1] && namesList[i - 1].trim()) ? namesList[i - 1].trim() : '';
@@ -867,7 +915,7 @@
 
         function openModal(seat, name) {
             currentStudentSeat = seat;
-            const week = parseInt(document.getElementById('weekNum').value) || 1;
+            const week = currentWeek;
             const dates = getWeekDates(week);
             const daysName = ['', '星期一', '星期二', '星期三', '星期四', '星期五'];
             const displayName = name ? `${String(seat).padStart(2, '0')} ${maskName(name)}` : `${String(seat).padStart(2, '0')} 號`;
@@ -933,6 +981,12 @@
             saveTeacherRun();
         }
 
+        function setTeacherRun(val) {
+            teacherRuns[currentDay] = val;
+            document.getElementById('teacherRunInput').value = val === 0 ? '' : val;
+            saveTeacherRun();
+        }
+
         function updatePrintView() {
             const tbody = document.getElementById('printTableBody');
             tbody.innerHTML = '';
@@ -943,8 +997,10 @@
             let dayJumpSum = { 1:0, 2:0, 3:0, 4:0, 5:0 };
 
             const namesList = classConfig.studentNames || [];
+            // 列印總表至少 35 列（官方標準單頁 A4 規格）
+            const printRowCount = Math.max(35, namesList.length);
 
-            for (let i = 1; i <= 35; i++) {
+            for (let i = 1; i <= printRowCount; i++) {
                 const sName = namesList[i - 1] || '';
                 const tr = document.createElement('tr');
 
@@ -988,7 +1044,7 @@
             document.getElementById('cfgTeacherName').value = classConfig.teacherName || 'OOO 老師';
             document.getElementById('cfgLeaderName').value = classConfig.leaderName || 'OOO、OOO';
             document.getElementById('cfgStudentCount').value = classConfig.studentCount || 35;
-            document.getElementById('cfgStudentNames').value = (classConfig.studentNames || []).filter(Boolean).join('\n');
+            document.getElementById('cfgStudentNames').value = (classConfig.studentNames || []).join('\n');
             document.getElementById('settingsModalOverlay').classList.add('active');
         }
 
@@ -998,12 +1054,24 @@
 
         function saveSettings() {
             const rawNames = document.getElementById('cfgStudentNames').value;
-            const namesArray = rawNames.split('\n').map(n => n.trim()).filter(Boolean);
+            // 智能清理：自動移除前導座號 (如 "1. 王小明" 或 "01\t李小美")
+            const namesArray = rawNames.split('\n')
+                .map(n => n.replace(/^\d+[\s\.\、\t]+/, '').trim());
+            
+            // 去除末尾空行
+            while (namesArray.length > 0 && namesArray[namesArray.length - 1] === '') {
+                namesArray.pop();
+            }
 
             classConfig.className = document.getElementById('cfgClassName').value.trim() || '4XX';
             classConfig.teacherName = document.getElementById('cfgTeacherName').value.trim() || 'OOO 老師';
             classConfig.leaderName = document.getElementById('cfgLeaderName').value.trim() || 'OOO、OOO';
-            classConfig.studentCount = parseInt(document.getElementById('cfgStudentCount').value) || 35;
+
+            if (namesArray.length > 0) {
+                classConfig.studentCount = namesArray.length;
+            } else {
+                classConfig.studentCount = parseInt(document.getElementById('cfgStudentCount').value) || 35;
+            }
             classConfig.studentNames = namesArray;
 
             localStorage.setItem('sh150_class_config', JSON.stringify(classConfig));
@@ -1026,18 +1094,23 @@
 
         /* ── Backup & Restore ── */
         function exportData() {
-            const exportObj = {
-                classConfig: classConfig,
-                week: document.getElementById('weekNum').value,
+            allWeeksData[currentWeek] = {
                 records: records,
-                teacherRuns: teacherRuns,
+                teacherRuns: teacherRuns
+            };
+            const exportObj = {
+                version: 2,
+                classConfig: classConfig,
+                currentWeek: currentWeek,
+                allWeeksData: allWeeksData,
                 exportTime: new Date().toISOString()
             };
+            const safeClassName = (classConfig.className || '4XX').replace(/[\\/:*?"<>|]/g, '_');
             const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `SH150_${classConfig.className}_第${exportObj.week}週_運動登記備份.json`;
+            a.download = `SH150_${safeClassName}_第${currentWeek}週與全學期運動登記備份.json`;
             a.click();
             URL.revokeObjectURL(url);
         }
@@ -1057,15 +1130,31 @@
                         classConfig = data.classConfig;
                         localStorage.setItem('sh150_class_config', JSON.stringify(classConfig));
                     }
-                    if (data.records) records = data.records;
-                    if (data.teacherRuns) teacherRuns = data.teacherRuns;
-                    if (data.week) document.getElementById('weekNum').value = data.week;
+                    if (data.allWeeksData && typeof data.allWeeksData === 'object') {
+                        allWeeksData = data.allWeeksData;
+                    } else if (data.records) {
+                        // 舊版單週備份檔相容
+                        const w = data.week ? parseInt(data.week) : currentWeek;
+                        allWeeksData = {};
+                        allWeeksData[w] = {
+                            records: data.records,
+                            teacherRuns: data.teacherRuns || { 1:0, 2:0, 3:0, 4:0, 5:0 }
+                        };
+                    }
+                    if (data.currentWeek) {
+                        currentWeek = parseInt(data.currentWeek) || 1;
+                    } else if (data.week) {
+                        currentWeek = parseInt(data.week) || 1;
+                    }
+                    document.getElementById('weekNum').value = currentWeek;
 
+                    loadCurrentWeekData();
                     saveData();
                     updateDateDisplays();
+                    switchDay(currentDay);
                     renderStudentGrid();
                     updatePrintView();
-                    alert('✅ 紀錄已成功載入！');
+                    alert('✅ 備份資料已成功載入！');
                 } catch(err) {
                     alert('❌ 檔案載入失敗，格式不正確。');
                 }
@@ -1075,18 +1164,41 @@
         }
 
         function clearCurrentWeek() {
-            if (confirm(`確定要清空第 ${document.getElementById('weekNum').value} 週的所有登記紀錄嗎？`)) {
+            if (confirm(`確定要清空第 ${currentWeek} 週的所有登記紀錄嗎？（其他週次紀錄不會被刪除）`)) {
                 records = {};
                 teacherRuns = { 1:0, 2:0, 3:0, 4:0, 5:0 };
+                allWeeksData[currentWeek] = {
+                    records: {},
+                    teacherRuns: { 1:0, 2:0, 3:0, 4:0, 5:0 }
+                };
                 saveData();
                 renderStudentGrid();
                 updatePrintView();
-                alert('已清空本週紀錄。');
+                alert(`第 ${currentWeek} 週紀錄已清空。`);
             }
         }
 
-        // Initialize on load
+        // 全域鍵盤 Escape 快捷關閉
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                closeSettingsModal();
+            }
+        });
+
+        // 監聽名冊輸入，自動連動人數
         window.addEventListener('DOMContentLoaded', () => {
+            const namesTextarea = document.getElementById('cfgStudentNames');
+            if (namesTextarea) {
+                namesTextarea.addEventListener('input', function() {
+                    const lines = this.value.split('\n')
+                        .map(n => n.replace(/^\d+[\s\.\、\t]+/, '').trim())
+                        .filter(Boolean);
+                    if (lines.length > 0) {
+                        document.getElementById('cfgStudentCount').value = lines.length;
+                    }
+                });
+            }
             loadData();
         });
     </script>
