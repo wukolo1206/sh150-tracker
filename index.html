@@ -649,10 +649,12 @@
         // 115 學年度第 1 學期開學週一基準日：2026/08/31
         const SEMESTER_START_MONDAY = new Date(2026, 7, 31);
 
+        let currentWeek = 1;
         let currentDay = 1; // 1: Mon ~ 5: Fri
         let currentStudentSeat = null;
-        let records = {}; // Key: "seat_day" -> { run: 0, jump: 0 }
-        let teacherRuns = { 1:0, 2:0, 3:0, 4:0, 5:0 };
+        let allWeeksData = {}; // Key: weekNum -> { records: {}, teacherRuns: {} }
+        let records = {}; // 當前週次資料，Key: "seat_day" -> { run: 0, jump: 0 }
+        let teacherRuns = { 1:0, 2:0, 3:0, 4:0, 5:0 }; // 當前週次資料
 
         // 自動推算每週星期一至五的日期
         function getWeekDates(weekNum) {
@@ -728,10 +730,15 @@
 
         // 從 Google 試算表讀取當週資料
         async function fetchFromCloud(week) {
+            const requestedWeek = parseInt(week) || 1;
             updateCloudStatus('syncing', '⏳ 讀取雲端試算表中...');
             try {
-                const res = await fetch(`${GAS_API_URL}?api=sh150&action=getWeek&week=${week}`);
+                const res = await fetch(`${GAS_API_URL}?api=sh150&action=getWeek&week=${requestedWeek}`);
                 const json = await res.json();
+
+                // 換週後，舊週的非同步回應不得寫入目前週次。
+                if (requestedWeek !== currentWeek) return;
+
                 if (json.status === 'success' && json.records) {
                     let hasNewData = false;
                     for (const key in json.records) {
@@ -754,7 +761,7 @@
                     updatePrintView();
                     const timeStr = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
                     updateCloudStatus('synced', `🟢 ☁️ 已同步 (${timeStr})`);
-                    syncToCloud();
+                    if (hasNewData) syncToCloud(requestedWeek, records, teacherRuns);
                 } else {
                     updateCloudStatus('synced', '🟢 ☁️ 雲端試算表已連線');
                 }
@@ -765,17 +772,21 @@
         }
 
         // 將當週資料推送到 Google 試算表
-        function syncToCloud() {
+        function syncToCloud(week, recordsSnapshot, teacherRunsSnapshot) {
             if (syncTimer) clearTimeout(syncTimer);
             updateCloudStatus('syncing', '⏳ 正在同步至 Google 試算表...');
 
+            // 延遲同步期間可能已切換週次，先複製目標週次資料，避免送錯週或送到另一週的 records。
+            const targetWeek = parseInt(week) || currentWeek;
+            const targetRecords = JSON.parse(JSON.stringify(recordsSnapshot || {}));
+            const targetTeacherRuns = JSON.parse(JSON.stringify(teacherRunsSnapshot || {}));
+
             syncTimer = setTimeout(async () => {
-                const currentWeek = parseInt(document.getElementById('weekNum').value) || 1;
                 const payload = {
                     api: "sh150",
-                    week: currentWeek,
-                    records: records,
-                    teacherRuns: teacherRuns,
+                    week: targetWeek,
+                    records: targetRecords,
+                    teacherRuns: targetTeacherRuns,
                     source: "408_大螢幕/平板看板"
                 };
 
@@ -800,7 +811,6 @@
         }
 
         function manualSync() {
-            const currentWeek = parseInt(document.getElementById('weekNum').value) || 1;
             fetchFromCloud(currentWeek);
         }
 
@@ -814,27 +824,67 @@
         }
 
         function onWeekChange() {
+            // 切換前先保存原週次；每一週各自擁有 records 與導師圈數。
+            allWeeksData[currentWeek] = {
+                records: records,
+                teacherRuns: teacherRuns
+            };
+
+            let nextWeek = parseInt(document.getElementById('weekNum').value) || 1;
+            if (nextWeek < 1) nextWeek = 1;
+            if (nextWeek > 25) nextWeek = 25;
+            currentWeek = nextWeek;
+            document.getElementById('weekNum').value = currentWeek;
+
+            loadCurrentWeekData();
             updateDateDisplays();
-            updatePrintView();
             saveLocalOnly();
-            const currentWeek = parseInt(document.getElementById('weekNum').value) || 1;
+            switchDay(currentDay);
+            updatePrintView();
             fetchFromCloud(currentWeek);
+        }
+
+        function loadCurrentWeekData() {
+            if (!allWeeksData[currentWeek]) {
+                allWeeksData[currentWeek] = {
+                    records: {},
+                    teacherRuns: { 1:0, 2:0, 3:0, 4:0, 5:0 }
+                };
+            }
+            records = allWeeksData[currentWeek].records || {};
+            teacherRuns = allWeeksData[currentWeek].teacherRuns || { 1:0, 2:0, 3:0, 4:0, 5:0 };
         }
 
         // Load data from LocalStorage
         function loadData() {
             const saved = localStorage.getItem('408_sh150_records');
-            let detected = detectCurrentWeek();
-            document.getElementById('weekNum').value = detected;
+            const detected = detectCurrentWeek();
+            currentWeek = detected;
+            allWeeksData = {};
 
             if (saved) {
                 try {
                     const parsed = JSON.parse(saved);
-                    records = parsed.records || {};
-                    teacherRuns = parsed.teacherRuns || { 1:0, 2:0, 3:0, 4:0, 5:0 };
-                    if (parsed.week) document.getElementById('weekNum').value = parsed.week;
+                    if (parsed.allWeeksData && typeof parsed.allWeeksData === 'object') {
+                        allWeeksData = parsed.allWeeksData;
+                    } else if (parsed.records && typeof parsed.records === 'object') {
+                        // 相容舊版單週格式：只搬到舊檔案標示的那一週，不擴散到其他週。
+                        const oldWeek = parsed.week ? parseInt(parsed.week) : detected;
+                        allWeeksData[oldWeek] = {
+                            records: parsed.records,
+                            teacherRuns: parsed.teacherRuns || { 1:0, 2:0, 3:0, 4:0, 5:0 }
+                        };
+                    }
+                    if (parsed.currentWeek) {
+                        currentWeek = Math.max(1, Math.min(parseInt(parsed.currentWeek) || detected, 25));
+                    } else if (parsed.week) {
+                        currentWeek = Math.max(1, Math.min(parseInt(parsed.week) || detected, 25));
+                    }
                 } catch(e) {}
             }
+
+            document.getElementById('weekNum').value = currentWeek;
+            loadCurrentWeekData();
 
             // 預設切換至今天的星期 (1~5)
             const todayDay = new Date().getDay(); // 0: Sun, 1: Mon ... 6: Sat
@@ -850,15 +900,18 @@
             updatePrintView();
 
             // 背景自動觸發雲端試算表同步
-            const currentWeek = parseInt(document.getElementById('weekNum').value) || 1;
             fetchFromCloud(currentWeek);
         }
 
         function saveLocalOnly() {
-            const data = {
-                week: document.getElementById('weekNum').value,
+            allWeeksData[currentWeek] = {
                 records: records,
                 teacherRuns: teacherRuns
+            };
+            const data = {
+                version: 2,
+                currentWeek: currentWeek,
+                allWeeksData: allWeeksData
             };
             localStorage.setItem('408_sh150_records', JSON.stringify(data));
         }
@@ -866,7 +919,7 @@
         function saveData() {
             saveLocalOnly();
             updatePrintView();
-            syncToCloud();
+            syncToCloud(currentWeek, records, teacherRuns);
         }
 
         function switchDay(day) {
