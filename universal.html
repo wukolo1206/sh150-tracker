@@ -445,6 +445,7 @@
                 <button class="btn btn-outline" onclick="importData()">📥 載入</button>
                 <button class="btn btn-outline" onclick="clearCurrentWeek()">🗑️ 清空本週</button>
                 <button class="btn btn-primary" onclick="window.print()">🖨️ A4 直接列印</button>
+                <button class="btn btn-outline" onclick="window.sh150OpenSchoolReport && sh150OpenSchoolReport()" title="彙整所選週次，核對後開啟學校 Google 表單">📤 填報學校本週資料</button>
             </div>
         </div>
 
@@ -477,7 +478,7 @@
                 今日全班預估總圈數：<span id="todayTotalSummary" style="font-size:1.3rem; color:#dc2626;">0 圈</span>
             </div>
         </div>
-        <footer class="app-version" id="appVersion" aria-label="系統版本">第 17 版</footer>
+        <footer class="app-version" id="appVersion" aria-label="系統版本">第 18 版</footer>
     </div>
 
     <!-- Student Record Input Modal -->
@@ -1256,6 +1257,44 @@
             }
             loadData();
         });
+    </script>
+    <!-- SH150 每週填報學校 Google 表單（school-form.js）：只新增 sh150_school_form_config，不改任何既有紀錄 -->
+    <script src="school-form.js"></script>
+    <script>
+    (function () {
+        if (!window.SH150SchoolForm) return;
+        function ROSTER_COUNT() { return (Array.isArray(classConfig.studentNames) && classConfig.studentNames.length) ? classConfig.studentNames.length : (parseInt(classConfig.studentCount) || 35); }
+        var A = {
+            storageKey: 'sh150_school_form_config',
+            settingsLabel: '「⚙️ 班級設定 / 貼上名冊」',
+            // 唯讀快照：取目前畫面記憶體中的所選週資料（深拷貝）
+            snapshot: function () {
+                var dates = [];
+                for (var d = 1; d <= 5; d++) {
+                    var x = new Date(SEMESTER_START_MONDAY);
+                    x.setDate(x.getDate() + (currentWeek - 1) * 7 + (d - 1));
+                    dates.push({ day: d, ymd: x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0') });
+                }
+                return JSON.parse(JSON.stringify({ week: currentWeek, records: records || {}, teacherRuns: teacherRuns || {}, rosterCount: ROSTER_COUNT(), dates: dates }));
+            },
+            semester: function () {
+                // 8 月以後開學為第 1 學期，2 月開學為第 2 學期（民國學年）
+                var y = SEMESTER_START_MONDAY.getFullYear() - 1911, m = SEMESTER_START_MONDAY.getMonth();
+                return m >= 7 ? y + '-1' : (y - 1) + '-2';
+            },
+            classInfo: function () { return { className: String(classConfig.className || '').trim(), teacherName: String(classConfig.teacherName || '').replace(/\s*老師$/, '').trim() }; },
+            storedWeek: function (week) {
+                var p = null;
+                try { p = JSON.parse(localStorage.getItem('sh150_universal_all_records') || 'null'); } catch (e) { p = null; }
+                return p && p.allWeeksData ? p.allWeeksData[String(week)] : null;
+            }
+        };
+        var form = SH150SchoolForm.init({
+            storageKey: A.storageKey, settingsLabel: A.settingsLabel, snapshot: A.snapshot, storedWeek: A.storedWeek,
+            classInfo: function () { var c = A.classInfo(); c.semester = A.semester(); return c; }
+        });
+        window.sh150OpenSchoolReport = form.open;
+    })();
     </script>
 </body>
 </html>

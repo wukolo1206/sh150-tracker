@@ -13,6 +13,14 @@
 - 🖨️ **A4 完美一鍵直印**：內建 @media print 排版，列印時自動轉換為完全吻合體育組紙本格式的單頁 A4 直式表格。
 - 💾 **離線資料庫與備份**：使用瀏覽器 localStorage 保存紀錄，並支援 JSON 匯出與匯入備份。
 
+## 📤 每週填報學校 Google 表單
+
+- 408 版與全校通用版工具列的「📤 填報學校本週資料」：彙整所選週次，核對後開啟已預填的學校表單（導師、班級、學生圈數、導師圈數、填報時間），老師補 1～2 張照片後自己按提交。
+- 跳繩依每天全班加總後每 200 下換 1 圈；導師填原始圈數，學校後台會乘 2。
+- 功能在 `school-form.js`（兩頁共用），設定只存在新的 `408_sh150_school_form_config`／`sh150_school_form_config`，不改既有紀錄。
+- 學校換表單時：「⚙️ 學校表單設定」貼上承辦的預填範本重新對應欄位。
+- 測試：`python -m unittest discover -s tests -p test_school_form.py -v`（Google 表單與 GAS 一律攔截）。
+
 ## 🚀 線上即時使用 (GitHub Pages)
 
 👉 **線上登記網址**：https://wukolo1206.github.io/sh150-tracker/
