@@ -33,8 +33,9 @@
     function pad(n) { return String(n).padStart(2, '0'); }
     function readCount(v) {
         if (v === undefined || v === null || v === '') return 0;
-        if (typeof v === 'number') return Number.isFinite(v) && v >= 0 && Math.floor(v) === v ? v : null;
-        if (typeof v === 'string' && /^\d+$/.test(v.trim())) return Number(v.trim());
+        // 必須是安全整數；超長數字字串會變成 Infinity 或失去精度，一律視為有誤
+        if (typeof v === 'number') return Number.isSafeInteger(v) && v >= 0 ? v : null;
+        if (typeof v === 'string' && /^\d+$/.test(v.trim())) { var n = Number(v.trim()); return Number.isSafeInteger(n) ? n : null; }
         return null;
     }
     var DAYS = '一二三四五';
@@ -87,6 +88,7 @@
             x.jumpLaps = Math.floor(x.jump / 200);       // 先全班當天加總，再每 200 下換 1 圈
             t.run += x.run; t.jump += x.jump; t.laps += x.jumpLaps; t.teacher += x.teacherRun;
         });
+        if (![t.run, t.jump, t.laps, t.teacher, t.run + t.laps, t.teacher + extra].every(Number.isSafeInteger)) errors.push('合計數字過大，請檢查紀錄');
         var out = Object.keys(outSeats).map(Number).sort(function (a, b) { return a - b; });
         if (out.length) warnings.push('座號 ' + out.join('、') + ' 不在目前名冊（' + roster + ' 人）內，但這週有運動紀錄，已計入；請核對');
         if (overLimit) warnings.push('有單筆數字超過登記畫面的上限（跑步 50 圈、跳繩 10000 下），已照原數計入；請核對');
@@ -135,15 +137,20 @@
         });
         var ra = isPlain(config.reportedAtBindings) ? config.reportedAtBindings : (config.reportedAtBindings === undefined ? {} : null);
         if (ra === null) { errors.push('填報日期的欄位對應格式錯誤'); ra = {}; }
-        var raOut = {}, partUsed = {};
+        var raOut = {}, partUsed = {}, dateBases = {};
         Object.keys(ra).forEach(function (param) {
             var part = ra[param];
             if (!validDateParam(param) || DATE_PARTS.indexOf(part) < 0) { errors.push('填報日期對應「' + param + '」格式錯誤'); return; }
+            // 參數尾碼必須和角色一致，例如 _month 只能對應「月」
+            var sfx = /_([a-z]+)$/.exec(param);
+            if (!sfx || sfx[1] !== part) { errors.push('填報日期對應「' + param + '」和「' + DATE_LABEL[part] + '」不一致'); return; }
             var base = param.replace(/_[a-z]+$/, '');
             if (used[param] || used[base]) { errors.push('填報日期對應「' + param + '」和其他欄位衝突'); return; }
             if (partUsed[part]) { errors.push('填報日期的「' + DATE_LABEL[part] + '」重複對應'); return; }
-            partUsed[part] = true; raOut[param] = part;
+            partUsed[part] = true; raOut[param] = part; dateBases[base] = true;
         });
+        // 自動帶入日期時間：年、月、日、時、分五個部分都要有，且屬於同一題
+        var dateComplete = DATE_PARTS.every(function (x) { return partUsed[x]; }) && Object.keys(dateBases).length === 1;
         var opts = Array.isArray(config.classOptions) ? config.classOptions : null;
         if (!opts || !opts.length) errors.push('班級選項不可空白');
         else {
@@ -165,11 +172,12 @@
             verification: {
                 status: ver.status === 'verified' ? 'verified' : 'unverified',
                 verifiedAt: typeof ver.verifiedAt === 'string' ? ver.verifiedAt : null,
-                reportedAt: ver.reportedAt === 'verified' && Object.keys(raOut).length ? 'verified' : 'unverified'
+                reportedAt: ver.reportedAt === 'verified' && dateComplete ? 'verified' : 'unverified'
             },
             updatedAt: typeof config.updatedAt === 'string' ? config.updatedAt : null
         };
         if (normalized && normalized.verification.status !== 'verified') warnings.push('欄位對應尚未核對：第一次開啟表單時請確認數字帶入正確的欄位');
+        if (normalized && ver.reportedAt === 'verified' && Object.keys(raOut).length && !dateComplete) warnings.push('填報日期的欄位對應不完整（需要同一題的年、月、日、時、分），已改為手動填寫');
         if (normalized && normalized.verification.reportedAt !== 'verified') warnings.push('填報日期時間沒有自動帶入，請在表單手動填寫');
         return { valid: !errors.length, errors: errors, warnings: warnings, normalized: normalized };
     }
@@ -186,14 +194,14 @@
         return { formUrl: form.formUrl, formId: form.formId, entries: entries, errors: [] };
     }
 
+    // 臺灣自 1979 年起沒有日光節約時間，固定 UTC+8；直接換算，不依賴瀏覽器 Intl 的 12／24 小時制設定
     function taipeiNow(date) {
-        var d = date instanceof Date ? date : new Date();
-        var parts = {};
-        new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
-            .formatToParts(d).forEach(function (p) { parts[p.type] = p.value; });
-        var hour = parts.hour === '24' ? '00' : parts.hour;
-        return { year: parts.year, month: parts.month, day: parts.day, hour: hour, minute: parts.minute,
-                 text: parts.year + '-' + parts.month + '-' + parts.day + ' ' + hour + ':' + parts.minute };
+        var d = date instanceof Date && !isNaN(date.getTime()) ? date : new Date();
+        var t = new Date(d.getTime() + 8 * 3600000);
+        var parts = { year: String(t.getUTCFullYear()), month: pad(t.getUTCMonth() + 1), day: pad(t.getUTCDate()),
+                      hour: pad(t.getUTCHours()), minute: pad(t.getUTCMinutes()) };
+        parts.text = parts.year + '-' + parts.month + '-' + parts.day + ' ' + parts.hour + ':' + parts.minute;
+        return parts;
     }
 
     function teacherNameProblem(name, where) {
@@ -324,9 +332,9 @@
         var where = A.settingsLabel || '「⚙️ 班級設定」';
         var style = el('style'); style.textContent = CSS; document.head.appendChild(style);
 
+        function readRaw() { try { return localStorage.getItem(A.storageKey); } catch (e) { return null; } }
         function loadConfig() {
-            var raw = null;
-            try { raw = localStorage.getItem(A.storageKey); } catch (e) { raw = null; }
+            var raw = readRaw();
             if (raw === null) return { config: clone(DEFAULT_CONFIG), state: 'default' };
             var obj = null;
             try { obj = JSON.parse(raw); } catch (e) { obj = null; }
@@ -423,6 +431,7 @@
             r.classInfo = info;
             view.report = r;
             view.at = taipeiNow();
+            view.cfgRaw = readRaw();
 
             var grid = el('div', 'sf-grid');
             [['班級', info.className], ['導師', info.teacherName], ['學期', info.semester + '，第 ' + r.week + ' 週'],
@@ -492,6 +501,13 @@
         function refreshIfChanged() {
             var now = takeSnapshot();
             if (!now) { rep.msg.textContent = '資料還沒載入完成，請關閉後重新開啟。'; return false; }
+            if (readRaw() !== view.cfgRaw) {
+                // 預覽開著時學校表單設定被改了（例如另一個分頁）：不可沿用舊網址
+                view.snap = now;
+                renderReport();
+                rep.msg.textContent = '⚠ 學校表單設定剛剛有變更，已重新整理，請重新核對後再按一次。';
+                return false;
+            }
             if (stable(now) === stable(view.snap)) return true;
             if (now.week !== view.snap.week) view.extra = 0;
             view.snap = now;
@@ -520,6 +536,7 @@
 
         function copyReport() {
             if (!refreshIfChanged()) return;
+            view.at = taipeiNow();
             var text = buildReportText(view.report, view.report.classInfo, view.at);
             function fallback() {
                 rep.copyText.value = text; rep.copyBox.classList.remove('sf-hidden');
@@ -680,8 +697,14 @@
         rep.check.addEventListener('change', function () { rep.open.disabled = !view.link || !view.link.url || !rep.check.checked; });
         rep.open.addEventListener('click', function () {
             if (!refreshIfChanged() || !view.link || !view.link.url) return;
-            openUrl(view.link.url);
-            showOpened(view.link.url, '已產生預填連結。請在學校表單核對數字、補上 1～2 張照片，再自己按「提交」。');
+            view.at = taipeiNow();
+            var st = loadConfig();
+            var link = st.config ? buildPrefillUrl(st.config, view.report, view.at, where) : null;
+            if (!link || !link.url) { renderReport(); return; }
+            view.link = link;
+            view.openedCfgRaw = view.cfgRaw;
+            openUrl(link.url);
+            showOpened(link.url, '已產生預填連結（填報時間 ' + view.at.text + '）。請在學校表單核對數字、補上 1～2 張照片，再自己按「提交」。');
         });
         rep.blank.addEventListener('click', function () {
             if (!view.link || !view.link.blankUrl) return;
@@ -694,6 +717,11 @@
         rep.verify.addEventListener('click', function () {
             var st = loadConfig();
             if (!st.config) return;
+            if (readRaw() !== view.openedCfgRaw) {
+                rep.msg.textContent = '⚠ 學校表單設定在開啟後有變更，請重新開啟表單後再核對。';
+                rep.verify.classList.add('sf-hidden');
+                return;
+            }
             if (!confirm('確認剛剛開啟的學校表單中，導師、班級、學生圈數、導師圈數都帶入正確的欄位嗎？')) return;
             var next = clone(st.config);
             next.verification.status = 'verified';
@@ -707,6 +735,7 @@
         set.reset.addEventListener('click', function () {
             if (!confirm('要把學校表單設定重設回內建值嗎？\n（只重設這個功能的設定，不會動到任何運動紀錄或班級資料）')) return;
             try { localStorage.removeItem(A.storageKey); } catch (e) {}
+            if (readRaw() !== null) { set.msg.textContent = '⚠ 重設失敗：瀏覽器無法刪除設定，原本的設定維持不變。'; return; }
             draft = null; set.msg.textContent = '✅ 已重設為內建設定。'; renderSettings();
         });
 

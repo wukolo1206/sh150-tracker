@@ -452,7 +452,7 @@
                 <button class="btn btn-outline" onclick="importData()">📥 載入</button>
                 <button class="btn btn-outline" onclick="clearCurrentWeek()">🗑️ 清空本週</button>
                 <button class="btn btn-primary" onclick="window.print()">🖨️ A4 直接列印</button>
-                <button class="btn btn-outline" onclick="window.sh150OpenSchoolReport && sh150OpenSchoolReport()" title="彙整所選週次，核對後開啟學校 Google 表單">📤 填報學校本週資料</button>
+                <button class="btn btn-outline" onclick="if (window.sh150OpenSchoolReport) sh150OpenSchoolReport(); else alert('填報功能沒有載入成功，請重新整理頁面後再試。');" title="彙整所選週次，核對後開啟學校 Google 表單">📤 填報學校本週資料</button>
             </div>
         </div>
 
@@ -1128,19 +1128,24 @@
     <script>
     (function () {
         if (!window.SH150SchoolForm) return;
+        // 408 版在 window.onload 才載入紀錄；載入完成前不提供快照
+        var ready = false;
+        var origOnload = window.onload;
+        window.onload = function (e) { var r = origOnload ? origOnload.call(this, e) : undefined; ready = true; return r; };
         function ROSTER_COUNT() { return STUDENTS.reduce(function (m, s) { return Math.max(m, s.seat); }, 0); }
         var A = {
             storageKey: '408_sh150_school_form_config',
             settingsLabel: '頁首',
             // 唯讀快照：取目前畫面記憶體中的所選週資料（深拷貝）
             snapshot: function () {
+                if (!ready) return null;   // 原本的紀錄還沒載入完成
                 var dates = [];
                 for (var d = 1; d <= 5; d++) {
                     var x = new Date(SEMESTER_START_MONDAY);
                     x.setDate(x.getDate() + (currentWeek - 1) * 7 + (d - 1));
                     dates.push({ day: d, ymd: x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0') });
                 }
-                return JSON.parse(JSON.stringify({ week: currentWeek, records: records || {}, teacherRuns: teacherRuns || {}, rosterCount: ROSTER_COUNT(), dates: dates }));
+                return JSON.parse(JSON.stringify({ week: currentWeek, records: records || {}, teacherRuns: teacherRuns || {}, rosterCount: ROSTER_COUNT(), dates: dates }, function (k, v) { return typeof v === 'number' && !Number.isFinite(v) ? String(v) : v; }));
             },
             semester: function () {
                 // 8 月以後開學為第 1 學期，2 月開學為第 2 學期（民國學年）

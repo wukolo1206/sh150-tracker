@@ -150,7 +150,7 @@ class TestUniversal(Base):
         p = self.open(self.PAGE, UNIVERSAL_STORAGE)
         btns = p.locator('.controls button').all_inner_texts()
         self.assertLess(btns.index('🖨️ A4 直接列印'), btns.index('📤 填報學校本週資料'))
-        self.assertIn('第 18 版', p.inner_text('#appVersion'))
+        self.assertIn('第 19 版', p.inner_text('#appVersion'))
         self.open_report(p)
         p.emulate_media(media='print')
         self.assertTrue(p.is_hidden('#sf-report-modal'))
@@ -208,6 +208,58 @@ class Test408(Base):
         p.click('button:has-text("上一週")'); p.wait_for_timeout(200)
         self.assertGreater(p.locator('.student-card').count(), 20)
         self.assertEqual(p._errs, [])
+
+
+class TestReviewV19(Base):
+    """Codex 第二輪審查的重現案例（sh150-tracker）。"""
+
+    def test_408_not_ready_before_onload(self):
+        # 延遲一個資源讓 window.onload 晚到：載入完成前按填報要提示稍候，不可顯示第 1 週空資料
+        ctx = self.browser.new_context()
+        self.addCleanup(ctx.close)
+        ctx.route('https://script.google.com/**', lambda r: r.fulfill(status=503, body='{}'))
+        held = []   # 先扣住圖片請求，讓 window.onload 延後；按完按鈕再放行
+        ctx.route('**/slow.gif', lambda route: held.append(route))
+        ctx.add_init_script('(() => { localStorage.setItem("408_sh150_records", %s); document.addEventListener("DOMContentLoaded", () => { const i = new Image(); i.src = "slow.gif"; document.body.appendChild(i); }); })()'
+                            % json.dumps(compact(week_data({'1_1': {'run': 3, 'jump': 0}}, {}))))
+        p = ctx.new_page(); dialogs = []
+        p.on('dialog', lambda d: (dialogs.append(d.message), d.accept()))
+        p.goto(self.base + 'index.html', wait_until='domcontentloaded')
+        p.wait_for_timeout(300)
+        p.click('button:has-text("填報學校本週資料")'); p.wait_for_timeout(200)
+        self.assertTrue(any('還沒載入' in m for m in dialogs), dialogs)
+        for r in held:
+            r.fulfill(status=200, content_type='image/gif', body=b'GIF89a\x01\x00\x01\x00\x00\x00\x00;')
+        p.wait_for_load_state('load'); p.wait_for_timeout(300)
+        p.fill('#weekNum', '6'); p.dispatch_event('#weekNum', 'change'); p.wait_for_timeout(200)
+        p.click('button:has-text("填報學校本週資料")'); p.wait_for_timeout(300)
+        self.assertIn('3 圈', p.inner_text('#sf-report-body'))
+
+    def test_module_missing_shows_alert(self):
+        ctx = self.browser.new_context()
+        self.addCleanup(ctx.close)
+        ctx.route('**/school-form.js', lambda r: r.fulfill(status=404, body='not found'))
+        p = ctx.new_page(); dialogs = []; errs = []
+        p.on('dialog', lambda d: (dialogs.append(d.message), d.accept()))
+        p.on('pageerror', lambda e: errs.append(str(e)))
+        p.goto(self.base + 'universal.html'); p.wait_for_timeout(600)
+        p.click('button:has-text("填報學校本週資料")'); p.wait_for_timeout(200)
+        self.assertTrue(any('沒有載入成功' in m for m in dialogs), dialogs)
+        self.assertEqual(errs, [])
+
+    def test_reset_failure_reported(self):
+        p = self.open('universal.html', dict(UNIVERSAL_STORAGE, sh150_school_form_config=compact(json.loads(json.dumps(
+            {'schema': 1, 'revision': 3, 'formUrl': FORM, 'bindings': CORE, 'reportedAtBindings': {}, 'classOptions': ['101'],
+             'verification': {'status': 'verified', 'verifiedAt': None, 'reportedAt': 'unverified'}, 'updatedAt': None})))))
+        self.open_report(p); p.click('#sf-report-settings'); p.wait_for_timeout(200)
+        p.evaluate("() => { const o = Storage.prototype.removeItem; Storage.prototype.removeItem = function (k) { if (k === 'sh150_school_form_config') throw new DOMException('no', 'SecurityError'); return o.call(this, k); }; }")
+        p.click('#sf-form-reset'); p.wait_for_timeout(200)
+        self.assertIn('重設失敗', p.inner_text('#sf-form-msg'))
+        self.assertIn('sh150_school_form_config', self.storage(p))
+
+    def test_version_19(self):
+        p = self.open('universal.html')
+        self.assertIn('第 19 版', p.inner_text('#appVersion'))
 
 
 if __name__ == '__main__':
