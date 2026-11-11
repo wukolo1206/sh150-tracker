@@ -176,7 +176,8 @@ class Test408(Base):
         st = {'408_sh150_records': compact(week_data(SAMPLE_RECORDS, SAMPLE_RUNS))}
         p = self.open(self.PAGE, st)
         before = self.storage(p)
-        p.fill('#weekNum', '6'); p.dispatch_event('#weekNum', 'change'); p.wait_for_timeout(300)
+        # 打開時在今天的週次；填 6 後讓輸入框失焦，只觸發一次切週（手動再派 change 會在之後失焦時多讀一次雲端）
+        p.fill('#weekNum', '6'); p.locator('#weekNum').blur(); p.wait_for_timeout(500)
         base = self.storage(p)
         gas_before = list(self.gas)
         self.open_report(p)

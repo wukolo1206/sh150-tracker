@@ -876,11 +876,7 @@
                             teacherRuns: parsed.teacherRuns || { 1:0, 2:0, 3:0, 4:0, 5:0 }
                         };
                     }
-                    if (parsed.currentWeek) {
-                        currentWeek = Math.max(1, Math.min(parseInt(parsed.currentWeek) || detected, 25));
-                    } else if (parsed.week) {
-                        currentWeek = Math.max(1, Math.min(parseInt(parsed.week) || detected, 25));
-                    }
+                    // 打開時一律跳到今天的週次；不沿用上次看的週次（否則會一直停在舊週）。
                 } catch(e) {}
             }
 
